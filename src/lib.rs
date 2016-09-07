@@ -1,4 +1,5 @@
 pub mod table;
+pub mod hashes;
 
 #[cfg(test)]
 mod tests {
