@@ -1,37 +1,69 @@
-// vector of buckets, each bucket being a linked list
-// two constant/defined hash functions for taking signatures to bucket chains, and getting the bucket out of the chain
-// pass in closures as signature functions (pass them here or just compute elsewhere? field of the data structure?)
-
-// bucket should just be a Vector<usize>
-
-type Bucket = Vec<usize>;
-struct LSHTable<T> {
-    buckets_array: Vec<Bucket>,
-    data: Vec<T> // the LSH table is going to own its data. we should, though, make it possible to borrow refs
+extern crate rand;
+use table::rand::Rng;
+type Bucket = Vec<usize>; // later this will have chaining, for now just blob
+ // everything together
+const P: i32 = 0xFFFFFFFF - 5;
+struct LSHTable<'a, T: 'a, Q: 'a> {
+    buckets: Vec<Bucket>,
+    data: &'a Vec<T>,
+    hash_functions: &'a Vec<&'a Q>,
+    ri1: Vec<f32>,
+    ri2: Vec<f32>
 }
 
-impl<T> LSHTable<T> {
-    pub fn new(in_data: Vec<T>) -> Self {
+impl<'a, T, Q: 'a> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
+    pub fn new(data: &'a Vec<T>, hashes: &'a Vec<&'a Q>) -> Self {
         LSHTable {
-            buckets_array: vec![vec![0 as usize; 1]; in_data.len()],
-            data: in_data
+            buckets: vec![Vec::new(); data.len() ],
+            data: data,
+            hash_functions: hashes,
+            ri1: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
+            ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect()
         }
+    }
+    pub fn new_build(data: &'a Vec<T>, hashes: &'a Vec<&'a Q>) -> Self {
+        let mut x_to_build = LSHTable::new(data, hashes);
+        for (i, v) in x_to_build.data.iter().enumerate() {
+            let hash_sig: Vec<f32> = hashes.iter().map(|x| {
+                (*x)(v)
+            }).collect();
+            let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
+            x_to_build.buckets[bucket_ind].push(i);
+        }
+        x_to_build
     }
 }
 
+fn hash_func_t1(signature: &Vec<f32>, rand_ints: &Vec<f32>, primes: i32, num_buckets: usize) -> usize {
+    let total: usize = signature.iter().zip(rand_ints).map(|(a, b)| {(a * b) as usize}).sum();
+    (total % (P as usize)) % num_buckets
+}
 
 #[cfg(test)]
 mod tests {
     use super::LSHTable;
     #[test]
-    fn test_it_works() {
+    fn test_init() {
         let test_data = vec![
             vec![1,2,3,4,5],
             vec![0,0,0,0,0],
             vec![1,2,3,4,5]
         ];
 
-        let x = LSHTable::new(test_data);
+        let val = |q: &Vec<i32>| {0.0 as f32};
+        let funcs = vec![&val];
+        let x = LSHTable::new(&test_data, &funcs);
+    }
+    #[test]
+    fn test_new_build() {
+        let test_data = vec![
+            vec![1,2,3,4,5],
+            vec![0,0,0,0,0],
+            vec![1,2,3,4,5]
+        ];
+
+        let val = |q: &Vec<i32>| {0.0 as f32};
+        let funcs = vec![&val];
+        let x = LSHTable::new_build(&test_data, &funcs);
     }
 }
-
