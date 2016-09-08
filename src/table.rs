@@ -3,16 +3,16 @@ use table::rand::Rng;
 type Bucket = Vec<usize>; // later this will have chaining, for now just blob
  // everything together
 const P: usize = 0xFFFFFFFF - 5;
-struct LSHTable<'a, T: 'a, Q: 'a> {
+pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<Bucket>,
     data: &'a Vec<T>,
-    hash_functions: &'a Vec<&'a Q>,
+    hash_functions: &'a Vec<Box<Q>>,
     ri1: Vec<f64>,
     ri2: Vec<f64>
 }
 
-impl<'a, T, Q: 'a> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
-    pub fn new(data: &'a Vec<T>, hashes: &'a Vec<&'a Q>) -> Self {
+impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
+    pub fn new(data: &'a Vec<T>, hashes: &'a Vec<Box<Q>>) -> Self {
         LSHTable {
             buckets: vec![Vec::new(); data.len() ],
             data: data,
@@ -21,7 +21,7 @@ impl<'a, T, Q: 'a> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect()
         }
     }
-    pub fn new_build(data: &'a Vec<T>, hashes: &'a Vec<&'a Q>) -> Self {
+    pub fn new_build(data: &'a Vec<T>, hashes: &'a Vec<Box<Q>>) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig: Vec<f64> = hashes.iter().map(|x| {
@@ -51,7 +51,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<i32>| {0.0 as f64};
-        let funcs = vec![&val];
+        let funcs = vec![Box::new(val)];
         let x = LSHTable::new(&test_data, &funcs);
     }
     #[test]
@@ -63,7 +63,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<i32>| {0.0 as f64};
-        let funcs = vec![&val];
+        let funcs = vec![Box::new(val)];
         let x = LSHTable::new_build(&test_data, &funcs);
     }
 }
