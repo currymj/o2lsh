@@ -2,7 +2,7 @@ extern crate rand;
 use table::rand::Rng;
 type Bucket = Vec<usize>; // later this will have chaining, for now just blob
  // everything together
-const P: i32 = 0xFFFFFFFF - 5;
+const P: usize = 0xFFFFFFFF - 5;
 struct LSHTable<'a, T: 'a, Q: 'a> {
     buckets: Vec<Bucket>,
     data: &'a Vec<T>,
@@ -34,9 +34,9 @@ impl<'a, T, Q: 'a> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     }
 }
 
-fn hash_func_t1(signature: &Vec<f64>, rand_ints: &Vec<f64>, primes: i32, num_buckets: usize) -> usize {
+fn hash_func_t1(signature: &Vec<f64>, rand_ints: &Vec<f64>, primes: usize, num_buckets: usize) -> usize {
     let total: usize = signature.iter().zip(rand_ints).map(|(a, b)| {(a * b) as usize}).sum();
-    (total % (P as usize)) % num_buckets
+    (total % primes) % num_buckets
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 pub mod table;
 pub mod hashes;
+pub mod util;
 
 #[cfg(test)]
 mod tests {
@@ -7,3 +8,4 @@ mod tests {
     fn it_works() {
     }
 }
+
