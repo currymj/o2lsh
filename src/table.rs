@@ -35,10 +35,17 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
         x_to_build
     }
+
+    pub fn query_vec(&self, v: &'a T) -> Vec<&T> {
+        let sig = self.get_signature(v);
+        let sig_ind = hash_func_t1(&sig, &self.ri1, P, self.buckets.len());
+        self.buckets[sig_ind].iter().map(|bucket_ind| {
+            &self.data[*bucket_ind]
+        }).collect()
+    }
 }
 
 fn hash_func_t1(signature: &Vec<f64>, rand_ints: &Vec<f64>, primes: f64, num_buckets: usize) -> usize {
-    //let total: usize = ((signature.iter().zip(rand_ints).map(|(a, b)| {(a * b) as usize}).sum()) as usize) % primes;
     let total: usize = {
         let mut counter: f64 = 0.0;
         for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
@@ -75,5 +82,19 @@ mod tests {
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
         let x = LSHTable::new_build(&test_data, &funcs);
+    }
+
+    #[test]
+    fn test_query() {
+        let test_data = vec![
+            vec![1,2,3,4,5],
+            vec![0,0,0,0,0],
+            vec![1,2,3,4,5]
+        ];
+
+        let val = |q: &Vec<i32>| {0.0 as f64};
+        let funcs = vec![Box::new(val)];
+        let x = LSHTable::new_build(&test_data, &funcs);
+        x.query_vec(&test_data[0]);
     }
 }
