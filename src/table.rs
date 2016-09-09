@@ -5,20 +5,18 @@ type Bucket = Vec<usize>; // later this will have chaining, for now just blob
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<Bucket>,
-    data: &'a Vec<T>,
-    hash_functions: &'a Vec<Box<Q>>,
+    data: &'a [T],
+    hash_functions: &'a [Box<Q>],
     ri1: Vec<f64>,
-    ri2: Vec<f64>
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
-    pub fn new(data: &'a Vec<T>, hashes: &'a Vec<Box<Q>>) -> Self {
+    pub fn new(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
         LSHTable {
             buckets: vec![Vec::new(); data.len()],
             data: data,
             hash_functions: hashes,
             ri1: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
-            ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect()
         }
     }
     fn get_signature(&self, v: &'a T) -> Vec<f64> {
@@ -26,7 +24,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             (*x)(v)
         }).collect()
     }
-    pub fn new_build(data: &'a Vec<T>, hashes: &'a Vec<Box<Q>>) -> Self {
+    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
@@ -45,7 +43,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     }
 }
 
-fn hash_func_t1(signature: &Vec<f64>, rand_ints: &Vec<f64>, primes: f64, num_buckets: usize) -> usize {
+fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: usize) -> usize {
     let total: usize = {
         let mut counter: f64 = 0.0;
         for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {

@@ -4,14 +4,11 @@ use self::rand::distributions::{Normal, IndependentSample};
 use self::rand::Rng;
 fn get_random_normal_vector(length: usize) -> Vec<f64> {
     let normal = Normal::new(0.0,1.0);
-    let mut output_vector: Vec<f64> = vec![0.0; length];
-    for i in 1..length {
-        output_vector[i] = normal.ind_sample(&mut rand::thread_rng());
-    }
+    let output_vector: Vec<f64> = vec![normal.ind_sample(&mut rand::thread_rng()); length];
     output_vector
 }
 
-pub fn get_hash_closure<'a>(length: usize, w: f64) -> Box<Fn(&Vec<f64>) -> f64> {
+pub fn get_hash_closure(length: usize, w: f64) -> Box<Fn(&Vec<f64>) -> f64> {
     let a = get_random_normal_vector(length);
     let b = rand::thread_rng().gen_range(0.0, w);
     let clos = move |v: &Vec<f64>| -> f64 {

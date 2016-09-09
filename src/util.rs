@@ -26,8 +26,8 @@ pub fn get_mnist_vector(fname: &str) -> Result<Vec<Vec<f64>>, Error> {
     }
 }
 
-pub fn mnist_test_to_vector(line: &String) -> Vec<f64> {
-    line.trim().split(" ").map(|instr| instr.parse().unwrap()).collect()
+pub fn mnist_test_to_vector(line: &str) -> Vec<f64> {
+    line.trim().split(' ').map(|instr| instr.parse().unwrap()).collect()
 }
 
 #[cfg(test)]
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn test_mnist_line_to_vector() {
         let my_vec = vec![0.0000, 1.0000, 0.00000, 0.20000];
-        let my_string = "0.0000 1.0000 0.00000 0.20000".to_string();
+        let my_string = "0.0000 1.0000 0.00000 0.20000";
         assert!(my_vec == mnist_test_to_vector(&my_string));
     }
 }
