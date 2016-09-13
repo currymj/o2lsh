@@ -1,5 +1,6 @@
 extern crate rand;
 use table::rand::Rng;
+use std::ops::{Index, IndexMut};
 type Bucket = Vec<usize>; // later this will have chaining, for now just blob
  // everything together
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
@@ -7,7 +8,36 @@ pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<Bucket>,
     data: &'a [T],
     hash_functions: &'a [Box<Q>],
-    ri1: Vec<f64>,
+    ri1: Vec<f64>
+}
+
+pub struct SmallPointerArray<T> {
+    data: Vec<T>
+}
+
+impl<T> Index<u32> for SmallPointerArray<T> {
+    type Output = T;
+    fn index<'a>(&'a self, _index: u32) -> &'a T {
+        &(self.data[_index as usize])
+    }
+}
+
+impl<T> IndexMut<u32> for SmallPointerArray<T> {
+    fn index_mut<'a>(&'a mut self, _index: u32) -> &'a mut T {
+        &mut (self.data[_index as usize])
+    }
+}
+
+impl<T> SmallPointerArray<T> {
+    pub fn new() -> Self {
+        SmallPointerArray {
+            data: Vec::new()
+        }
+    }
+
+    pub fn push(&mut self, x: T) {
+        self.data.push(x);
+    }
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
@@ -44,6 +74,10 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
 }
 
 fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: usize) -> usize {
+    let total = hash_func_inner(signature, rand_ints, primes);
+    total % num_buckets
+}
+fn hash_func_inner(signature: &[f64], rand_ints: &[f64], primes: f64) -> usize {
     let total: usize = {
         let mut counter: f64 = 0.0;
         for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
@@ -51,12 +85,13 @@ fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: 
         }
         counter as usize
     };
-    total % num_buckets
+    total
 }
 
 #[cfg(test)]
 mod tests {
     use super::LSHTable;
+    use super::SmallPointerArray;
     #[test]
     fn test_init() {
         let test_data = vec![
@@ -94,5 +129,18 @@ mod tests {
         let funcs = vec![Box::new(val)];
         let x = LSHTable::new_build(&test_data, &funcs);
         x.query_vec(&test_data[0]);
+    }
+
+    #[test]
+    fn test_small_array() {
+        let mut test_arr: SmallPointerArray<i32> = SmallPointerArray::new();
+        for i in 1..10 {
+            test_arr.push(i);
+        }
+        println!("{}", test_arr.data.len());
+        println!("test!");
+        for i in 0u32..9 {
+            println!("{}", test_arr[i]);
+        };
     }
 }
