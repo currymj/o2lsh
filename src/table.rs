@@ -2,8 +2,9 @@ extern crate rand;
 use table::rand::Rng;
 use std::ops::{Index, IndexMut};
 type Bucket = Vec<usize>; // later this will have chaining, for now just blob
- // everything together
+// everything together
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
+const MASK: u32 = 0x000FFFFF;
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<Bucket>,
     data: &'a [T],
@@ -11,19 +12,34 @@ pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     ri1: Vec<f64>
 }
 
+pub struct MaskedSmallPointerArray<T> {
+    data: Vec<T>
+}
+impl<T> Index<u32> for MaskedSmallPointerArray<T> {
+    type Output = T;
+    fn index(&self, _index: u32) -> &T {
+        &(self.data[(_index & MASK)  as usize])
+    }
+}
+
+impl<T> IndexMut<u32> for MaskedSmallPointerArray<T> {
+    fn index_mut(&mut self, _index: u32) -> &mut T {
+        &mut (self.data[(_index & MASK) as usize])
+    }
+}
 pub struct SmallPointerArray<T> {
     data: Vec<T>
 }
 
 impl<T> Index<u32> for SmallPointerArray<T> {
     type Output = T;
-    fn index<'a>(&'a self, _index: u32) -> &'a T {
+    fn index(&self, _index: u32) -> &T {
         &(self.data[_index as usize])
     }
 }
 
 impl<T> IndexMut<u32> for SmallPointerArray<T> {
-    fn index_mut<'a>(&'a mut self, _index: u32) -> &'a mut T {
+    fn index_mut(&mut self, _index: u32) -> &mut T {
         &mut (self.data[_index as usize])
     }
 }
@@ -78,14 +94,11 @@ fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: 
     total % num_buckets
 }
 fn hash_func_inner(signature: &[f64], rand_ints: &[f64], primes: f64) -> usize {
-    let total: usize = {
-        let mut counter: f64 = 0.0;
-        for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
-            counter = ((counter + element)) % primes;
-        }
-        counter as usize
-    };
-    total
+    let mut counter: f64 = 0.0;
+    for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
+        counter = ((counter + element)) % primes;
+    }
+    counter as usize
 }
 
 #[cfg(test)]
