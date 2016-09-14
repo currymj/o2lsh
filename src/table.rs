@@ -1,5 +1,4 @@
 extern crate rand;
-use std::ops::Index;
 use table::rand::Rng;
 
 #[derive(Clone)]
@@ -20,7 +19,7 @@ impl Bucket {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BucketChain {
     chain: Vec<Bucket>
 }
@@ -32,7 +31,7 @@ impl BucketChain {
         }
     }
     pub fn get(&self, _index: usize) -> Option<&Bucket> {
-        for bucket_ref in self.chain.iter() {
+        for bucket_ref in &self.chain {
             if bucket_ref.hash_sig == _index {
                 return Some(bucket_ref);
             }
@@ -40,7 +39,7 @@ impl BucketChain {
         None
     }
     pub fn get_mut(&mut self, _index: usize) -> Option<&mut Bucket> {
-        for bucket_ref in self.chain.iter_mut() {
+        for bucket_ref in &mut self.chain {
             if bucket_ref.hash_sig == _index {
                 return Some(bucket_ref);
             }
@@ -85,7 +84,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
             let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
-            let ref mut bucket_chain = x_to_build.buckets[bucket_ind];
+            let mut bucket_chain = &mut (x_to_build.buckets[bucket_ind]);
             let chain_ind = hash_func_t2(&hash_sig, &x_to_build.ri2, P );
             let mut bad = false;
             {
