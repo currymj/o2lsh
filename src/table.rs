@@ -1,22 +1,78 @@
 extern crate rand;
+use std::ops::Index;
 use table::rand::Rng;
-type Bucket = Vec<usize>; // later this will have chaining, for now just blob
+
+#[derive(Clone)]
+pub struct Bucket {
+    pointers: Vec<usize>,
+    hash_sig: usize
+}
+
+impl Bucket {
+    pub fn new(hash_sig: usize) -> Self {
+        Bucket {
+            pointers: Vec::new(),
+            hash_sig: hash_sig
+        }
+    }
+    pub fn push(&mut self, value: usize) {
+        self.pointers.push(value);
+    }
+}
+
+#[derive(Clone)]
+pub struct BucketChain {
+    chain: Vec<Bucket>
+}
+
+impl BucketChain {
+    pub fn new() -> Self {
+        BucketChain{
+            chain: Vec::new()
+        }
+    }
+    pub fn get(&self, _index: usize) -> Option<&Bucket> {
+        for bucket_ref in self.chain.iter() {
+            if bucket_ref.hash_sig == _index {
+                return Some(bucket_ref);
+            }
+        }
+        None
+    }
+    pub fn get_mut(&mut self, _index: usize) -> Option<&mut Bucket> {
+        for bucket_ref in self.chain.iter_mut() {
+            if bucket_ref.hash_sig == _index {
+                return Some(bucket_ref);
+            }
+        }
+        None
+    }
+    pub fn create_and_add_bucket(&mut self, bucket_sig: usize, value: usize) {
+        let mut new_bucket = Bucket::new(bucket_sig);
+        new_bucket.push(value);
+        self.chain.push(new_bucket);
+    }
+}
+
+ // later this will have chaining, for now just blob
  // everything together
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
-    buckets: Vec<Bucket>,
+    buckets: Vec<BucketChain>,
     data: &'a [T],
     hash_functions: &'a [Box<Q>],
     ri1: Vec<f64>,
+    ri2: Vec<f64>,
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     pub fn new(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
         LSHTable {
-            buckets: vec![Vec::new(); data.len()],
+            buckets: vec![BucketChain::new(); data.len()],
             data: data,
             hash_functions: hashes,
             ri1: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
+            ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
         }
     }
     fn get_signature(&self, v: &'a T) -> Vec<f64> {
@@ -29,7 +85,19 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
             let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
-            x_to_build.buckets[bucket_ind].push(i);
+            let ref mut bucket_chain = x_to_build.buckets[bucket_ind];
+            let chain_ind = hash_func_t2(&hash_sig, &x_to_build.ri2, P );
+            let mut bad = false;
+            {
+                let bucket_opt = bucket_chain.get_mut(chain_ind);
+                match bucket_opt {
+                    Some(bucket_ref) => bucket_ref.push(i),
+                    None => bad = true
+                };
+            }
+            if bad {
+                bucket_chain.create_and_add_bucket(chain_ind, i);
+            }
         }
         x_to_build
     }
@@ -37,23 +105,28 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     pub fn query_vec(&self, v: &'a T) -> Vec<&T> {
         let sig = self.get_signature(v);
         let sig_ind = hash_func_t1(&sig, &self.ri1, P, self.buckets.len());
-        self.buckets[sig_ind].iter().map(|bucket_ind| {
-            &self.data[*bucket_ind]
-        }).collect()
+        let chain_ind = hash_func_t2(&sig, &self.ri2, P );
+        match self.buckets[sig_ind].get(chain_ind) {
+           Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+                &self.data[*bucket_ind]
+           }).collect(),
+            None => Vec::new()
+        }
     }
 }
 
 fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: usize) -> usize {
-    let total: usize = {
-        let mut counter: f64 = 0.0;
-        for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
-            counter = ((counter + element)) % primes;
-        }
-        counter as usize
-    };
+    let total: usize = hash_func_t2(signature, rand_ints, primes);
     total % num_buckets
 }
 
+fn hash_func_t2(signature: &[f64], rand_ints: &[f64], primes: f64) -> usize {
+    let mut counter: f64 = 0.0;
+    for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
+        counter = ((counter + element)) % primes;
+    }
+    counter as usize
+}
 #[cfg(test)]
 mod tests {
     use super::LSHTable;
