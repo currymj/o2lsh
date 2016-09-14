@@ -3,8 +3,10 @@ use table::rand::Rng;
 use std::ops::{Index, IndexMut};
 type Bucket = Vec<usize>; // later this will have chaining, for now just blob
 // everything together
+
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
 const MASK: u32 = 0x000FFFFF;
+
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<Bucket>,
     data: &'a [T],
@@ -56,6 +58,17 @@ impl<T> SmallPointerArray<T> {
     }
 }
 
+impl<T> MaskedSmallPointerArray<T> {
+    pub fn new() -> Self {
+        MaskedSmallPointerArray {
+            data: Vec::new()
+        }
+    }
+
+    pub fn push(&mut self, x: T) {
+        self.data.push(x);
+    }
+}
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     pub fn new(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
         LSHTable {
@@ -74,7 +87,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         let mut x_to_build = LSHTable::new(data, hashes);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
-            let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
+            let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len() as u32) as usize;
             x_to_build.buckets[bucket_ind].push(i);
         }
         x_to_build
@@ -82,29 +95,30 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
 
     pub fn query_vec(&self, v: &'a T) -> Vec<&T> {
         let sig = self.get_signature(v);
-        let sig_ind = hash_func_t1(&sig, &self.ri1, P, self.buckets.len());
+        let sig_ind = hash_func_t1(&sig, &self.ri1, P, (self.buckets.len() as u32)) as usize;
         self.buckets[sig_ind].iter().map(|bucket_ind| {
             &self.data[*bucket_ind]
         }).collect()
     }
 }
 
-fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: usize) -> usize {
+fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: u32) -> u32 {
     let total = hash_func_inner(signature, rand_ints, primes);
     total % num_buckets
 }
-fn hash_func_inner(signature: &[f64], rand_ints: &[f64], primes: f64) -> usize {
+fn hash_func_inner(signature: &[f64], rand_ints: &[f64], primes: f64) -> u32 {
     let mut counter: f64 = 0.0;
     for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
         counter = ((counter + element)) % primes;
     }
-    counter as usize
+    counter as u32
 }
 
 #[cfg(test)]
 mod tests {
     use super::LSHTable;
     use super::SmallPointerArray;
+    use super::MaskedSmallPointerArray;
     #[test]
     fn test_init() {
         let test_data = vec![
@@ -153,6 +167,18 @@ mod tests {
         println!("{}", test_arr.data.len());
         println!("test!");
         for i in 0u32..9 {
+            println!("{}", test_arr[i]);
+        };
+    }
+    #[test]
+    fn test_masked_array() {
+        let mut test_arr: MaskedSmallPointerArray<i32> = MaskedSmallPointerArray::new();
+        for i in 1..10 {
+            test_arr.push(i);
+        }
+        println!("{}", test_arr.data.len());
+        println!("test!");
+        for i in 0xFFF00000u32..0xFFF00009 {
             println!("{}", test_arr[i]);
         };
     }
