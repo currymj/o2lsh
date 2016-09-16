@@ -1,0 +1,108 @@
+#+TITLE: Multiprobe LSH
+* Central concepts
+Multiprobe LSH is a heuristic technique for reducing the memory requirements
+of locality sensitive hashing. Essentially, the idea is to compute the
+signature for a query and then take advantage of the fact that nearby
+signatures are also quite likely to contain near neighbors.
+* Generating perturbation sequences
+** $x_i(\delta)
+*** Computing
+$x_i(\delta), \delta \in \{-1, +1\}$ is the distance of the signature
+(pre-quantization) to the edge of the bucket either to the left or right.
+Thus we need access to $f_i(q)$, the floating-point value, and $h_i(q)$,
+the actual bucket value after taking the floor.
+
+#+name: all
+#+BEGIN_SRC rust :exports none :noweb yes :tangle multi.rs
+use std::cmp::Ordering;
+<<bucket-distance>>
+<<sorted-tuple-list>>
+<<sorted_tuple_test>>
+#+END_SRC
+
+#+name: bucket-distance
+#+BEGIN_SRC rust :exports code
+  fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
+      if delta == -1 {
+          W*(fi - hi)
+      } else if delta == 1 {
+          W - W*(fi - hi)
+      } else {
+          0 as f64
+      }
+  }
+#+END_SRC
+
+*** Sorting
+We compute $x_i(\delta)$ for $i = 1 ... M$, $\delta \in \{-1, +1\}$. Then, sort
+in increasing order and call them $z_j$. $z_j$ is some $x(\delta)$, a distance
+from a bucket boundary. $\pi_j$ is $(i, \delta)$ for $z_j$.
+
+#+name: sorted-tuple-list
+#+BEGIN_SRC rust
+  fn compute_sorted_i_delta<T>(q: &Vec<T>, f_sig: &Vec<f64>, h_sig: &Vec<f64>, W: f64) -> Vec<(usize, i32)> {
+      let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter().zip(h_sig.iter()).enumerate().flat_map(|(i, (fi, hi))| {
+          vec![((i, 1), bucket_distance(*fi, *hi, 1, W)),
+           ((i, -1), bucket_distance(*fi, *hi, -1, W))].into_iter()
+      }).collect();
+      intermediate_vec.sort_by(|a, b| {
+          if a.1 > b.1 {
+              Ordering::Greater
+          } else if a.1 < b.1 {
+              Ordering::Less
+          } else {
+              Ordering::Equal
+          }
+      });
+      intermediate_vec.iter().map(|a| {a.0}).collect()
+  }
+#+END_SRC
+
+#+name: sorted_tuple_test
+#+BEGIN_SRC rust
+  #[test]
+  fn sorted_delta_test() {
+      let test_q = vec![1.0,2.0,3.0,4.0,5.0];
+      let f_sig = vec![1.5,1.2,2.2];
+      let h_sig = vec![1.0,1.0,2.0];
+      let W = 10.0;
+      compute_sorted_i_delta(&test_q, &f_sig, &h_sig, W);
+  }
+#+END_SRC
+
+** Scoring a perturbation set
+A perturbation set consists of some indices $j$; its score is $\sum z_j^2$.
+
+#+name: scoring-given-zj
+#+BEGIN_SRC rust 
+  fn score_set(perturbation_set: Vec<usize>, zj_list: Vec<f64>) -> f64 {
+      perturbation_set.map(|ind| { zj_list[ind] * zj_list[ind]}).sum()
+  }
+#+END_SRC
+
+** Generating the set itself
+
+*** We use a MinHeap, ordered by score
+
+** Dealing with $z_i$
+*** Using $E[z_i^2]$
+We know the expected value of $z_i^2$, based on an analysis in the paper.
+Basically, it comes down to the fact that in the end, the $z_j$ we get given our
+random choice of hash functions (for the first $M$ $z_j$) is equivalent to
+randomly choosing $M$ numbers uniformly from $[0, W/2]$, which is intuitively
+simple and actually does turn out to be well-understood.
+
+
+for $j$ in $1 ... M$,
+
+$E[z_j] = \frac{j}{2(M+1)}W$
+
+$E[z_j^2] = \frac{j(j+1)}{4(M+1)(M+2)}W^2
+
+and for $j$ in $M+1 ... 2M$,
+
+$E[z_j^2] = E[(W - z_{2M+1-j})^2] = W^2(1 - \frac{2M+1-j}{M+1} +
+\frac{(2M+1-j)(2M+2-j)}{4(M+1)(M+2)})$
+
+We can use these values as the values of $z_i^2$ to compute the expected score
+of any perturbation sequence.

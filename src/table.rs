@@ -53,8 +53,6 @@ impl BucketChain {
     }
 }
 
- // later this will have chaining, for now just blob
- // everything together
 const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<BucketChain>,
@@ -62,16 +60,18 @@ pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     hash_functions: &'a [Box<Q>],
     ri1: Vec<f64>,
     ri2: Vec<f64>,
+    multiprobe_sequence: &'a Vec<Vec<i32>>
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
-    pub fn new(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
+    pub fn new(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a Vec<Vec<i32>>) -> Self {
         LSHTable {
             buckets: vec![BucketChain::new(); data.len()],
             data: data,
             hash_functions: hashes,
             ri1: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
             ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
+            multiprobe_sequence: ms
         }
     }
     fn get_signature(&self, v: &'a T) -> Vec<f64> {
@@ -79,8 +79,8 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             (*x)(v)
         }).collect()
     }
-    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>]) -> Self {
-        let mut x_to_build = LSHTable::new(data, hashes);
+    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a Vec<Vec<i32>>) -> Self {
+        let mut x_to_build = LSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
             let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
@@ -112,6 +112,33 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             None => Vec::new()
         }
     }
+
+    fn perturb_signature(&self, sig: Vec<f64>, v: &T) -> Vec<Vec<f64>> {
+        // precompute the multiprobe data...where?
+        // don't worry about it, worry about this end for now
+        // for j in M_list
+        // get pi_j(that) from sig and v
+        // add to output vector
+        unimplemented!();
+    }
+
+    pub fn query_multiprobe(&self, v: &'a T) -> Vec<&T> {
+        let sig = self.get_signature(v);
+        let all_sigs = self.perturb_signature(sig, v);
+        let mut output_vec = Vec::new();
+        for s in all_sigs.iter() {
+            let sig_ind = hash_func_t1(&s, &self.ri1, P, self.buckets.len());
+            let chain_ind = hash_func_t2(&s, &self.ri2, P);
+            output_vec.append(
+                &mut match self.buckets[sig_ind].get(chain_ind) {
+                    Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+                        &self.data[*bucket_ind]
+                    }).collect(),
+                    None => Vec::new()
+                });
+        }
+        output_vec
+    }
 }
 
 fn hash_func_t1(signature: &[f64], rand_ints: &[f64], primes: f64, num_buckets: usize) -> usize {
@@ -139,7 +166,8 @@ mod tests {
 
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
-        let x = LSHTable::new(&test_data, &funcs);
+        let ms = vec![vec![1i32,2,3]];
+        let x = LSHTable::new(&test_data, &funcs, &ms);
     }
     #[test]
     fn test_new_build() {
@@ -151,7 +179,8 @@ mod tests {
 
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
-        let x = LSHTable::new_build(&test_data, &funcs);
+        let ms = vec![vec![1i32,2,3]];
+        let x = LSHTable::new_build(&test_data, &funcs, &ms);
     }
 
     #[test]
@@ -164,7 +193,8 @@ mod tests {
 
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
-        let x = LSHTable::new_build(&test_data, &funcs);
+        let ms = vec![vec![1i32,2,3]];
+        let x = LSHTable::new_build(&test_data, &funcs, &ms);
         x.query_vec(&test_data[0]);
     }
 }
