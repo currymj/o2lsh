@@ -60,11 +60,11 @@ pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     hash_functions: &'a [Box<Q>],
     ri1: Vec<f64>,
     ri2: Vec<f64>,
-    multiprobe_sequence: &'a Vec<Vec<i32>>
+    multiprobe_sequence: &'a [Vec<i32>]
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
-    pub fn new(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a Vec<Vec<i32>>) -> Self {
+    pub fn new(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a [Vec<i32>]) -> Self {
         LSHTable {
             buckets: vec![BucketChain::new(); data.len()],
             data: data,
@@ -79,7 +79,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             (*x)(v)
         }).collect()
     }
-    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a Vec<Vec<i32>>) -> Self {
+    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a [Vec<i32>]) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_signature(v);
@@ -126,9 +126,9 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         let sig = self.get_signature(v);
         let all_sigs = self.perturb_signature(sig, v);
         let mut output_vec = Vec::new();
-        for s in all_sigs.iter() {
-            let sig_ind = hash_func_t1(&s, &self.ri1, P, self.buckets.len());
-            let chain_ind = hash_func_t2(&s, &self.ri2, P);
+        for s in &all_sigs {
+            let sig_ind = hash_func_t1(s, &self.ri1, P, self.buckets.len());
+            let chain_ind = hash_func_t2(s, &self.ri2, P);
             output_vec.append(
                 &mut match self.buckets[sig_ind].get(chain_ind) {
                     Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {

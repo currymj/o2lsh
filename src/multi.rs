@@ -46,7 +46,7 @@ struct PerturbationSet<'a> {
     zj_list: &'a [f64]
 }
 
-fn gen_perturbation_sets<'a>(zj_l: &'a [f64]) -> PerturbationIterator<'a> {
+fn gen_perturbation_sets(zj_l: &[f64]) -> PerturbationIterator {
     let mut new_heap = BinaryHeap::new();
     let zero_vec = vec![0];
     let a0 = PerturbationSet {
