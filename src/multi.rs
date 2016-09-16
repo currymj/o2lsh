@@ -43,10 +43,10 @@ fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
 #[derive(PartialEq)]
 struct PerturbationSet<'a> {
     data: Vec<usize>,
-    zj_list: &'a Vec<f64>
+    zj_list: &'a [f64]
 }
 
-fn gen_perturbation_sets<'a>(zj_l: &'a Vec<f64>) -> PerturbationIterator<'a> {
+fn gen_perturbation_sets<'a>(zj_l: &'a [f64]) -> PerturbationIterator<'a> {
     let mut new_heap = BinaryHeap::new();
     let zero_vec = vec![0];
     let a0 = PerturbationSet {
@@ -61,9 +61,15 @@ fn gen_perturbation_sets<'a>(zj_l: &'a Vec<f64>) -> PerturbationIterator<'a> {
 }
 struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
-    zj_list: &'a Vec<f64>
+    zj_list: &'a [f64]
 }
 
+#[test]
+fn test_perturbation_iterator() {
+    let zjl = vec![1.0,2.0,3.0,4.0];
+    let ii = gen_perturbation_sets(&zjl);
+    let z: Vec<_> = ii.take(3).collect();
+}
 impl<'a> Iterator for PerturbationIterator<'a> {
     type Item = PerturbationSet<'a>;
     fn next(&mut self) -> Option<PerturbationSet<'a>> {
@@ -72,9 +78,9 @@ impl<'a> Iterator for PerturbationIterator<'a> {
                 Some(revord_val) => {
                     let a_i = revord_val.0;
                     let a_s = a_i.shift();
-                    //self.heap.push(RevOrd(a_s));
+                    self.heap.push(RevOrd(a_s));
                     let a_e = a_i.expand();
-                    //self.heap.push(RevOrd(a_e));
+                    self.heap.push(RevOrd(a_e));
 
                     if a_i.valid() {
                         return Some(a_i);
@@ -115,7 +121,7 @@ impl<'a> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
         let newlist = self.zj_list;
-        for &x in self.data.iter() {
+        for &x in &self.data {
             let y = x;
             if y == *max_val {
                 new_data.push(y+1);
@@ -129,12 +135,19 @@ impl<'a> PerturbationSet<'a> {
         }
     }
     pub fn valid(&self) -> bool {
-        unimplemented!();
+        let max_m = 10; //DUMMY!
+        for &val in &self.data {
+            let other_should_be_missing = 2 * max_m + 1 - val;
+            if let Some(_) = self.data.iter().position(|&y| { y == other_should_be_missing}) {
+                return false;
+            }
+        }
+        true
     }
     pub fn expand<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
-        for &x in self.data.iter() {
+        for &x in &self.data {
             new_data.push(x);
         }
         new_data.push(*max_val + 1);
@@ -142,5 +155,5 @@ impl<'a> PerturbationSet<'a> {
             data: new_data,
             zj_list: self.zj_list
         }
-    } 
+    }
 }
