@@ -1,4 +1,7 @@
+extern crate revord;
 use std::cmp::Ordering;
+use self::revord::RevOrd;
+use std::collections::BinaryHeap;
 
 fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
     if delta == -1 {
@@ -43,6 +46,47 @@ struct PerturbationSet<'a> {
     zj_list: &'a Vec<f64>
 }
 
+fn gen_perturbation_sets<'a>(zj_l: &'a Vec<f64>) -> PerturbationIterator<'a> {
+    let mut new_heap = BinaryHeap::new();
+    let zero_vec = vec![0];
+    let a0 = PerturbationSet {
+        data: zero_vec,
+        zj_list: zj_l
+    };
+    new_heap.push(RevOrd(a0));
+    PerturbationIterator {
+        heap: new_heap,
+        zj_list: zj_l
+    }
+}
+struct PerturbationIterator<'a> {
+    heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
+    zj_list: &'a Vec<f64>
+}
+
+impl<'a> Iterator for PerturbationIterator<'a> {
+    type Item = PerturbationSet<'a>;
+    fn next(&mut self) -> Option<PerturbationSet<'a>> {
+        loop {
+            match self.heap.pop() {
+                Some(revord_val) => {
+                    let a_i = revord_val.0;
+                    let a_s = a_i.shift();
+                    //self.heap.push(RevOrd(a_s));
+                    let a_e = a_i.expand();
+                    //self.heap.push(RevOrd(a_e));
+
+                    if a_i.valid() {
+                        return Some(a_i);
+                    }
+                },
+                None => return None
+            };
+        }
+    }
+}
+
+
 impl<'a> Eq for PerturbationSet<'a> {}
 
 impl<'a> Ord for PerturbationSet<'a> {
@@ -67,26 +111,31 @@ impl<'a> PartialOrd for PerturbationSet<'a> {
     }
 }
 impl<'a> PerturbationSet<'a> {
-    fn shift(&self) -> PerturbationSet {
+    pub fn shift<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
-        for x in self.data.iter() {
-            if *x == *max_val {
-                new_data.push(*x+1);
+        let newlist = self.zj_list;
+        for &x in self.data.iter() {
+            let y = x;
+            if y == *max_val {
+                new_data.push(y+1);
             } else {
-                new_data.push(*x);
+                new_data.push(y);
             }
         }
         PerturbationSet {
             data: new_data,
-            zj_list: self.zj_list
+            zj_list: newlist
         }
     }
-    fn expand(&self) -> PerturbationSet {
+    pub fn valid(&self) -> bool {
+        unimplemented!();
+    }
+    pub fn expand<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
-        for x in self.data.iter() {
-            new_data.push(*x);
+        for &x in self.data.iter() {
+            new_data.push(x);
         }
         new_data.push(*max_val + 1);
         PerturbationSet {
