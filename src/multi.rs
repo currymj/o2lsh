@@ -12,11 +12,14 @@ fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
         0 as f64
     }
 }
-fn compute_sorted_i_delta<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
-    let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter().zip(h_sig.iter()).enumerate().flat_map(|(i, (fi, hi))| {
-        vec![((i, 1), bucket_distance(*fi, *hi, 1, W)),
-         ((i, -1), bucket_distance(*fi, *hi, -1, W))].into_iter()
-    }).collect();
+fn compute_pi_j<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
+    let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter()
+        .zip(h_sig.iter())
+        .enumerate()
+        .flat_map(|(i, (fi, hi))| {
+            vec![((i, 1), bucket_distance(*fi, *hi, 1, W)),
+                 ((i, -1), bucket_distance(*fi, *hi, -1, W))].into_iter()
+        }).collect();
     intermediate_vec.sort_by(|a, b| {
         if a.1 > b.1 {
             Ordering::Greater
@@ -34,24 +37,20 @@ fn sorted_delta_test() {
     let f_sig = vec![1.5,1.2,2.2];
     let h_sig = vec![1.0,1.0,2.0];
     let W = 10.0;
-    compute_sorted_i_delta(&test_q, &f_sig, &h_sig, W);
+    compute_pi_j(&test_q, &f_sig, &h_sig, W);
 }
 fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
     perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
 }
 
-#[derive(PartialEq)]
-struct PerturbationSet<'a> {
-    data: Vec<usize>,
-    zj_list: &'a [f64]
-}
 
 fn gen_perturbation_sets(zj_l: &[f64]) -> PerturbationIterator {
     let mut new_heap = BinaryHeap::new();
     let zero_vec = vec![0];
     let a0 = PerturbationSet {
         data: zero_vec,
-        zj_list: zj_l
+        zj_list: zj_l,
+        max_m: zj_l.len() / 2
     };
     new_heap.push(RevOrd(a0));
     PerturbationIterator {
@@ -78,9 +77,13 @@ impl<'a> Iterator for PerturbationIterator<'a> {
                 Some(revord_val) => {
                     let a_i = revord_val.0;
                     let a_s = a_i.shift();
-                    self.heap.push(RevOrd(a_s));
+                    if a_s.valid() {
+                        self.heap.push(RevOrd(a_s));
+                    }
                     let a_e = a_i.expand();
-                    self.heap.push(RevOrd(a_e));
+                    if a_e.valid() {
+                        self.heap.push(RevOrd(a_e));
+                    }
 
                     if a_i.valid() {
                         return Some(a_i);
@@ -93,6 +96,12 @@ impl<'a> Iterator for PerturbationIterator<'a> {
 }
 
 
+#[derive(PartialEq, Debug)]
+struct PerturbationSet<'a> {
+    data: Vec<usize>,
+    zj_list: &'a [f64],
+    max_m:  usize
+}
 impl<'a> Eq for PerturbationSet<'a> {}
 
 impl<'a> Ord for PerturbationSet<'a> {
@@ -117,6 +126,9 @@ impl<'a> PartialOrd for PerturbationSet<'a> {
     }
 }
 impl<'a> PerturbationSet<'a> {
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
     pub fn shift<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
@@ -131,18 +143,22 @@ impl<'a> PerturbationSet<'a> {
         }
         PerturbationSet {
             data: new_data,
-            zj_list: newlist
+            zj_list: newlist,
+            max_m: self.max_m
         }
     }
     pub fn valid(&self) -> bool {
-        let max_m = 10; //DUMMY!
+        let &max_val = self.data.iter().max().unwrap();
+        if max_val >= self.max_m {
+            return false;
+        }
         for &val in &self.data {
-            let other_should_be_missing = 2 * max_m + 1 - val;
+            let other_should_be_missing = 2 * self.max_m + 1 - val;
             if let Some(_) = self.data.iter().position(|&y| { y == other_should_be_missing}) {
                 return false;
             }
         }
-        true
+        return true;
     }
     pub fn expand<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
@@ -153,7 +169,35 @@ impl<'a> PerturbationSet<'a> {
         new_data.push(*max_val + 1);
         PerturbationSet {
             data: new_data,
-            zj_list: self.zj_list
+            zj_list: self.zj_list,
+            max_m: self.max_m
         }
+    }
+}
+
+fn expected_zj_squared(j: usize, M: usize, W: f64) -> f64 {
+    if j <= M {
+        (((j * (j + 1)) as f64)
+            / ((4 * (M + 1) * (M + 2)) as f64)) * (W * W)
+    } else {
+        (W*W) * (1.0 - ((2 * M + 1 - j) as f64) / ((M + 1) as f64) +
+                 (((2 * M + 1 - j) * (2 * M + 2 - j)) as f64) / ((4 * (M + 1) * (M + 2)) as f64))
+    }
+}
+
+#[test]
+fn test_expected_zj_squared() {
+    expected_zj_squared(1,10,1.0);
+}
+
+#[test]
+fn test_perturbation_iterator_zj() {
+    let mut zj_vals = Vec::new();
+    for j in 1..20 {
+        zj_vals.push(expected_zj_squared(j, 10, 1.0));
+    }
+    let perturbation_iterator = gen_perturbation_sets(&zj_vals);
+    for pert in perturbation_iterator {
+        println!("{}", pert.len());
     }
 }
