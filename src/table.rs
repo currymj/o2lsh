@@ -79,10 +79,15 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             (*x)(v)
         }).collect()
     }
+    fn get_quantized_signature(&self, v: &'a T) -> Vec<f64> {
+        self.hash_functions.iter().map(|x| {
+            (*x)(v).floor()
+        }).collect()
+    }
     pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a [Vec<i32>]) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
-            let hash_sig = x_to_build.get_signature(v);
+            let hash_sig = x_to_build.get_quantized_signature(v);
             let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, P, x_to_build.buckets.len());
             let mut bucket_chain = &mut (x_to_build.buckets[bucket_ind]);
             let chain_ind = hash_func_t2(&hash_sig, &x_to_build.ri2, P );
@@ -102,7 +107,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     }
 
     pub fn query_vec(&self, v: &'a T) -> Vec<&T> {
-        let sig = self.get_signature(v);
+        let sig = self.get_quantized_signature(v);
         let sig_ind = hash_func_t1(&sig, &self.ri1, P, self.buckets.len());
         let chain_ind = hash_func_t2(&sig, &self.ri2, P );
         match self.buckets[sig_ind].get(chain_ind) {
@@ -113,18 +118,17 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
     }
 
-    fn perturb_signature(&self, sig: Vec<f64>, v: &T) -> Vec<Vec<f64>> {
-        // precompute the multiprobe data...where?
-        // don't worry about it, worry about this end for now
-        // for j in M_list
-        // get pi_j(that) from sig and v
-        // add to output vector
+    fn perturb_signature(&self, sig: &[f64], v: &T) -> Vec<Vec<f64>> {
+        // the multi-probe sequence should just be a bunch of j
+        // then we have pi_j FOR JUST THIS TABLE
+        // that maps our list of j onto a vector of -1/+1 indexed by i
         unimplemented!();
     }
 
     pub fn query_multiprobe(&self, v: &'a T) -> Vec<&T> {
         let sig = self.get_signature(v);
-        let all_sigs = self.perturb_signature(sig, v);
+        let qsig = self.get_quantized_signature(v);
+        let all_sigs = self.perturb_signature(&sig, v);
         let mut output_vec = Vec::new();
         for s in &all_sigs {
             let sig_ind = hash_func_t1(s, &self.ri1, P, self.buckets.len());
@@ -156,6 +160,9 @@ fn hash_func_t2(signature: &[f64], rand_ints: &[f64], primes: f64) -> usize {
 #[cfg(test)]
 mod tests {
     use super::LSHTable;
+
+
+    // fn to gen multiprobe sequence
     #[test]
     fn test_init() {
         let test_data = vec![
@@ -164,9 +171,11 @@ mod tests {
             vec![1,2,3,4,5]
         ];
 
+
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
         let ms = vec![vec![1i32,2,3]];
+        // get actual multiprobe sequence into ms instead
         let x = LSHTable::new(&test_data, &funcs, &ms);
     }
     #[test]
@@ -194,6 +203,7 @@ mod tests {
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
         let ms = vec![vec![1i32,2,3]];
+        // get actual multiprobe sequence into ms instead
         let x = LSHTable::new_build(&test_data, &funcs, &ms);
         x.query_vec(&test_data[0]);
     }
