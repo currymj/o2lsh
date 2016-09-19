@@ -31,6 +31,7 @@ fn compute_pi_j<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize,
     });
     intermediate_vec.iter().map(|a| {a.0}).collect()
 }
+
 #[test]
 fn sorted_delta_test() {
     let test_q = vec![1.0,2.0,3.0,4.0,5.0];
@@ -39,10 +40,10 @@ fn sorted_delta_test() {
     let W = 10.0;
     compute_pi_j(&test_q, &f_sig, &h_sig, W);
 }
+
 fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
     perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
 }
-
 
 fn gen_perturbation_sets(zj_l: &[f64]) -> PerturbationIterator {
     let mut new_heap = BinaryHeap::new();
@@ -55,12 +56,11 @@ fn gen_perturbation_sets(zj_l: &[f64]) -> PerturbationIterator {
     new_heap.push(RevOrd(a0));
     PerturbationIterator {
         heap: new_heap,
-        zj_list: zj_l
     }
 }
+
 struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
-    zj_list: &'a [f64]
 }
 
 #[test]
