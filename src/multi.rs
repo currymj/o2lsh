@@ -45,7 +45,7 @@ fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
     perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
 }
 
-fn gen_perturbation_sets<'b>(zj_l: Vec<f64>) -> PerturbationIterator<'b> {
+fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
     let mut perturb_return: PerturbationIterator<'b> = PerturbationIterator {
         heap: BinaryHeap::new(),
         zj_list: zj_l
@@ -53,7 +53,7 @@ fn gen_perturbation_sets<'b>(zj_l: Vec<f64>) -> PerturbationIterator<'b> {
     let zero_vec = vec![0];
     let a0: PerturbationSet<'b> = PerturbationSet {
         data: zero_vec,
-        zj_list: &perturb_return.zj_list,
+        zj_list: zj_l,
         max_m: perturb_return.zj_list.len() / 2
     };
     perturb_return.heap.push(RevOrd(a0));
@@ -62,13 +62,13 @@ fn gen_perturbation_sets<'b>(zj_l: Vec<f64>) -> PerturbationIterator<'b> {
 
 struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
-    zj_list: Vec<f64>
+    zj_list: &'a[f64]
 }
 
 #[test]
 fn test_perturbation_iterator() {
     let zjl = vec![1.0,2.0,3.0,4.0];
-    let ii = gen_perturbation_sets(zjl);
+    let ii = gen_perturbation_sets(&zjl);
     let z: Vec<_> = ii.take(3).collect();
 }
 impl<'a> Iterator for PerturbationIterator<'a> {
@@ -206,7 +206,7 @@ fn test_perturbation_iterator_zj() {
     for j in 1..20 {
         zj_vals.push(expected_zj_squared(j, 10, 1.0));
     }
-    let perturbation_iterator = gen_perturbation_sets(zj_vals);
+    let perturbation_iterator = gen_perturbation_sets(&zj_vals);
     for pert in perturbation_iterator {
         println!("{}", pert.len());
     }
