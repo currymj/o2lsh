@@ -12,7 +12,7 @@ fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
         0 as f64
     }
 }
-fn compute_pi_j<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
+pub fn compute_pi_j<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
     let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter()
         .zip(h_sig.iter())
         .enumerate()
@@ -45,7 +45,7 @@ fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
     perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
 }
 
-fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
+pub fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
     let mut perturb_return: PerturbationIterator<'b> = PerturbationIterator {
         heap: BinaryHeap::new(),
         zj_list: zj_l
@@ -60,7 +60,7 @@ fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
     perturb_return
 }
 
-struct PerturbationIterator<'a> {
+pub struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
     zj_list: &'a[f64]
 }
@@ -99,8 +99,8 @@ impl<'a> Iterator for PerturbationIterator<'a> {
 
 
 #[derive(PartialEq, Debug)]
-struct PerturbationSet<'a> {
-    data: Vec<usize>,
+pub struct PerturbationSet<'a> {
+    pub data: Vec<usize>,
     zj_list: &'a [f64],
     max_m:  usize
 }
@@ -187,13 +187,13 @@ fn expected_zj_squared(j: usize, M: usize, W: f64) -> f64 {
     }
 }
 
-/*fn get_perturbation_iterator<'b>(j: usize, M: usize, W: f64) -> PerturbationIterator<'b> {
+pub fn get_expected_zj_vals(M: usize, W: f64) -> Vec<f64> {
     let mut zj_vals = Vec::new();
-    for j in 1..20 {
-        zj_vals.push(expected_zj_squared(j, 10, 1.0));
+    for j in 0..M {
+        zj_vals.push(expected_zj_squared(j, M, W));
     }
-    gen_perturbation_sets(&zj_vals)
-}*/
+    zj_vals
+}
 
 #[test]
 fn test_expected_zj_squared() {
