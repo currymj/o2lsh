@@ -216,7 +216,7 @@ mod tests {
 
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
-        let zjs = multi::get_expected_zj_vals(4,1.0);
+        let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
             .collect();
