@@ -131,6 +131,9 @@ impl<'a> PerturbationSet<'a> {
     pub fn len(&self) -> usize {
         self.data.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
     pub fn shift<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
         let max_val = self.data.iter().max().unwrap();
@@ -160,7 +163,7 @@ impl<'a> PerturbationSet<'a> {
                 return false;
             }
         }
-        return true;
+        true
     }
     pub fn expand<'b>(&'b self) -> PerturbationSet<'a> {
         let mut new_data = Vec::new();
