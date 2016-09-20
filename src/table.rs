@@ -120,17 +120,28 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
     }
 
-    fn perturb_signature(&self, sig: &[f64], v: &T) -> Vec<Vec<f64>> {
-        // the multi-probe sequence should just be a bunch of j
-        // then we have pi_j FOR JUST THIS TABLE
-        // that maps our list of j onto a vector of -1/+1 indexed by i
-        unimplemented!();
+    fn get_all_sigs(&self, sig: &[f64]) -> Vec<Vec<f64>> {
+        let qsig = self.quantize_signature(sig);
+        let pi_map = multi::compute_pi_j(sig, &qsig, 1.0);
+        let mut combined_output = Vec::new();
+        for perturb_set in self.multiprobe_sequence {
+            let mut out_vec = qsig.clone();
+            for &val in perturb_set {
+                let (i, delta) = pi_map[val];
+                out_vec[i] += delta as f64;
+            }
+            combined_output.push(out_vec);
+        }
+        combined_output
+    }
+    
+    fn quantize_signature(&self, sig: &[f64]) -> Vec<f64> {
+        sig.iter().map(|x| {x.floor()}).collect()
     }
 
     pub fn query_multiprobe(&self, v: &'a T) -> Vec<&T> {
         let sig = self.get_signature(v);
-        let qsig = self.get_quantized_signature(v);
-        let all_sigs = self.perturb_signature(&sig, v);
+        let all_sigs = self.get_all_sigs(&sig);
         let mut output_vec = Vec::new();
         for s in &all_sigs {
             let sig_ind = hash_func_t1(s, &self.ri1, P, self.buckets.len());

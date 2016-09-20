@@ -12,7 +12,7 @@ fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
         0 as f64
     }
 }
-pub fn compute_pi_j<T>(q: &[T], f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
+pub fn compute_pi_j(f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
     let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter()
         .zip(h_sig.iter())
         .enumerate()
@@ -38,7 +38,7 @@ fn sorted_delta_test() {
     let f_sig = vec![1.5,1.2,2.2];
     let h_sig = vec![1.0,1.0,2.0];
     let W = 10.0;
-    compute_pi_j(&test_q, &f_sig, &h_sig, W);
+    compute_pi_j(&f_sig, &h_sig, W);
 }
 
 fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
