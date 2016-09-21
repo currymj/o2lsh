@@ -59,20 +59,21 @@ const P: f64 = (0xFFFFFFFE as usize - 4) as f64;
 pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
     buckets: Vec<BucketChain>,
     data: &'a [T],
-    hash_functions: &'a [Box<Q>],
+    hash_functions: Vec<Box<Q>>,
     ri1: Vec<f64>,
     ri2: Vec<f64>,
     multiprobe_sequence: &'a [Vec<usize>]
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
-    pub fn new(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a [Vec<usize>]) -> Self {
+    pub fn new(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
+        let length_hash = hashes.len();
         LSHTable {
             buckets: vec![BucketChain::new(); data.len()],
             data: data,
             hash_functions: hashes,
-            ri1: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
-            ri2: rand::thread_rng().gen_iter().take(hashes.len()).collect(),
+            ri1: rand::thread_rng().gen_iter().take(length_hash).collect(),
+            ri2: rand::thread_rng().gen_iter().take(length_hash).collect(),
             multiprobe_sequence: ms
         }
     }
@@ -86,7 +87,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             (*x)(v).floor()
         }).collect()
     }
-    pub fn new_build(data: &'a [T], hashes: &'a [Box<Q>], ms: &'a [Vec<usize>]) -> Self {
+    pub fn new_build(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_quantized_signature(v);
@@ -134,7 +135,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
         combined_output
     }
-    
+
     fn quantize_signature(&self, sig: &[f64]) -> Vec<f64> {
         sig.iter().map(|x| {x.floor()}).collect()
     }
@@ -175,7 +176,6 @@ mod tests {
     use super::LSHTable;
     use multi;
 
-
     // fn to gen multiprobe sequence
     #[test]
     fn test_init() {
@@ -190,7 +190,7 @@ mod tests {
         let funcs = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         // get actual multiprobe sequence into ms instead
-        let x = LSHTable::new(&test_data, &funcs, &ms);
+        let x = LSHTable::new(&test_data, funcs, &ms);
     }
     #[test]
     fn test_new_build() {
@@ -203,7 +203,7 @@ mod tests {
         let val = |q: &Vec<i32>| {0.0 as f64};
         let funcs = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
-        let x = LSHTable::new_build(&test_data, &funcs, &ms);
+        let x = LSHTable::new_build(&test_data, funcs, &ms);
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
         let ms: Vec<Vec<usize>> = sets.into_iter()
             .map(|x| {x.data})
             .collect();
-        let x = LSHTable::new_build(&test_data, &funcs, &ms);
+        let x = LSHTable::new_build(&test_data, funcs, &ms);
         x.query_vec(&test_data[0]);
     }
 }
