@@ -58,4 +58,31 @@ use super::*;
             mylookup.add_table(new_single_table);
         }
     }
+
+    #[test]
+    fn test_query_tables() {
+        let test_data = vec![
+            vec![1,2,3,4,5],
+            vec![0,0,0,0,0],
+            vec![1,2,3,4,5]
+        ];
+        let zjs = multi::get_expected_zj_vals(1,1.0);
+        let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
+            .take(5)
+            .collect();
+        let ms: Vec<Vec<usize>> = sets.into_iter()
+            .map(|x| {x.data})
+            .collect();
+        let mut mylookup = LSHLookup::new(&test_data);
+        for _ in 1..10 {
+            let val = |_: &Vec<i32>| {0.0 as f64};
+            let funcs = vec![Box::new(val)];
+            let new_single_table = LSHTable::new(&test_data, funcs, &ms);
+            mylookup.add_table(new_single_table);
+        }
+
+        for data in &test_data {
+            println!("{:?}", mylookup.query_vec(data));
+        }
+    }
 }
