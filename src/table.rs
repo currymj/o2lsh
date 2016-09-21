@@ -109,13 +109,13 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         x_to_build
     }
 
-    pub fn query_vec(&self, v: &'a T) -> Vec<&T> {
+    pub fn query_vec(&self, v: &'a T) -> Vec<usize> {
         let sig = self.get_quantized_signature(v);
         let sig_ind = hash_func_t1(&sig, &self.ri1, P, self.buckets.len());
         let chain_ind = hash_func_t2(&sig, &self.ri2, P );
         match self.buckets[sig_ind].get(chain_ind) {
            Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                &self.data[*bucket_ind]
+                *bucket_ind
            }).collect(),
             None => Vec::new()
         }
@@ -140,7 +140,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         sig.iter().map(|x| {x.floor()}).collect()
     }
 
-    pub fn query_multiprobe(&self, v: &'a T) -> Vec<&T> {
+    pub fn query_multiprobe(&self, v: &'a T) -> Vec<usize> {
         let sig = self.get_signature(v);
         let all_sigs = self.get_all_sigs(&sig);
         let mut output_vec = Vec::new();
@@ -150,7 +150,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             output_vec.append(
                 &mut match self.buckets[sig_ind].get(chain_ind) {
                     Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                        &self.data[*bucket_ind]
+                        *bucket_ind
                     }).collect(),
                     None => Vec::new()
                 });
@@ -225,5 +225,25 @@ mod tests {
             .collect();
         let x = LSHTable::new_build(&test_data, funcs, &ms);
         x.query_vec(&test_data[0]);
+    }
+    #[test]
+    fn test_query_multiprobe() {
+        let test_data = vec![
+            vec![1,2,3,4,5],
+            vec![0,0,0,0,0],
+            vec![1,2,3,4,5]
+        ];
+
+        let val = |q: &Vec<i32>| {0.0 as f64};
+        let funcs = vec![Box::new(val)];
+        let zjs = multi::get_expected_zj_vals(1,1.0);
+        let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
+            .take(5)
+            .collect();
+        let ms: Vec<Vec<usize>> = sets.into_iter()
+            .map(|x| {x.data})
+            .collect();
+        let x = LSHTable::new_build(&test_data, funcs, &ms);
+        x.query_multiprobe(&test_data[0]);
     }
 }
