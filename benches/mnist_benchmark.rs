@@ -33,7 +33,7 @@ fn build_table_from_mnist_and_query(b: &mut Bencher) {
 
     let run_test = || {
         for vec in mnist_q.iter() {
-            hash_table.query_multiprobe(&vec);
+            hash_table.query_multiprobe(&vec, 10);
         }
     };
 
@@ -71,7 +71,7 @@ fn build_many_tables_from_mnist_and_time_query(b: &mut Bencher) {
     }
     let run_test = || {
         for vec in mnist_q.iter() {
-            all_tables.query_vec(&vec);
+            all_tables.query_vec(&vec, 10);
         }
     };
 

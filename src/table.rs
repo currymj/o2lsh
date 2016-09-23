@@ -77,11 +77,14 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             multiprobe_sequence: ms
         }
     }
+    #[inline(never)]
     fn get_signature(&self, v: &'a T) -> Vec<f64> {
         self.hash_functions.iter().map(|x| {
             (*x)(v)
         }).collect()
     }
+
+    #[inline(never)]
     fn get_quantized_signature(&self, v: &'a T) -> Vec<f64> {
         self.hash_functions.iter().map(|x| {
             (*x)(v).floor()
@@ -121,11 +124,11 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
     }
 
-    fn get_all_sigs(&self, sig: &[f64]) -> Vec<Vec<f64>> {
+    fn get_all_sigs(&self, sig: &[f64], multiprobe_limit: usize) -> Vec<Vec<f64>> {
         let qsig = self.quantize_signature(sig);
         let pi_map = multi::compute_pi_j(sig, &qsig, 1.0);
         let mut combined_output = Vec::new();
-        for perturb_set in self.multiprobe_sequence {
+        for perturb_set in self.multiprobe_sequence.iter().take(multiprobe_limit) {
             let mut out_vec = qsig.clone();
             for &val in perturb_set {
                 let (i, delta) = pi_map[val];
@@ -140,9 +143,10 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         sig.iter().map(|x| {x.floor()}).collect()
     }
 
-    pub fn query_multiprobe(&self, v: &'a T) -> Vec<usize> {
+    #[inline(never)]
+    pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let sig = self.get_signature(v);
-        let all_sigs = self.get_all_sigs(&sig);
+        let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);
         let mut output_vec = Vec::new();
         for s in &all_sigs {
             let sig_ind = hash_func_t1(s, &self.ri1, P, self.buckets.len());
@@ -244,6 +248,6 @@ mod tests {
             .map(|x| {x.data})
             .collect();
         let x = LSHTable::new_build(&test_data, funcs, &ms);
-        x.query_multiprobe(&test_data[0]);
+        x.query_multiprobe(&test_data[0], 3);
     }
 }

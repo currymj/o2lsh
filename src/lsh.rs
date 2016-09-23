@@ -19,10 +19,12 @@ impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         }
     }
 
-    pub fn query_vec(&self, v: &'a T) -> Vec<usize> {
+
+    #[inline(never)]
+    pub fn query_vec(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let mut output_set = BTreeSet::new();
         for table in &self.tables {
-            for &reference in &table.query_multiprobe(v) {
+            for &reference in &table.query_multiprobe(v, multiprobe_limit) {
                 output_set.insert(reference);
             }
         }
@@ -82,7 +84,7 @@ use super::*;
         }
 
         for data in &test_data {
-            println!("{:?}", mylookup.query_vec(data));
+            println!("{:?}", mylookup.query_vec(data,3));
         }
     }
 }

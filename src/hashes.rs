@@ -12,10 +12,10 @@ pub fn get_hash_closure(length: usize, w: f64) -> Box<Fn(&Vec<f64>) -> f64> {
     let a = get_random_normal_vector(length);
     let b = rand::thread_rng().gen_range(0.0, w);
     let clos = move |v: &Vec<f64>| -> f64 {
-        let total: f64 = v.iter()
-            .zip(a.iter())
-            .map(|(x, y)| x * y)
-            .sum();
+        let mut total = 0.0;
+        for i in 1..v.len() {
+            total += v[i] * a[i];
+        }
         (total + b) / w
     };
     Box::new(clos)
