@@ -77,14 +77,12 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
             multiprobe_sequence: ms
         }
     }
-    #[inline(never)]
     fn get_signature(&self, v: &'a T) -> Vec<f64> {
         self.hash_functions.iter().map(|x| {
             (*x)(v)
         }).collect()
     }
 
-    #[inline(never)]
     fn get_quantized_signature(&self, v: &'a T) -> Vec<f64> {
         self.hash_functions.iter().map(|x| {
             (*x)(v).floor()
@@ -143,7 +141,6 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f64 {
         sig.iter().map(|x| {x.floor()}).collect()
     }
 
-    #[inline(never)]
     pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let sig = self.get_signature(v);
         let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);

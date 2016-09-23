@@ -20,7 +20,6 @@ impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f64 {
     }
 
 
-    #[inline(never)]
     pub fn query_vec(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let mut output_set = BTreeSet::new();
         for table in &self.tables {
