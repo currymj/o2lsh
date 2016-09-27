@@ -165,7 +165,6 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
 }
 
 
-#[inline(never)]
 fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usize {
     let total: usize = hash_func_t2(signature, rand_ints);
     total % num_buckets
@@ -173,13 +172,8 @@ fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usi
 
 const HIGH_ORDER: u64 = 0xFFFF0000;
 const LOW_ORDER: u64 = 0x0000FFFF;
-#[inline(never)]
+
 fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
-    /*let mut counter = 0;
-    for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
-        counter = ((counter + element)) % primes;
-    }
-    counter as usize*/
     let mut total = 0 as u32;
     for (&i, &j) in signature.iter().zip(rand_ints) {
         let i_product = (i * j) as u64;
@@ -187,7 +181,7 @@ fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
         if alpha < P {
             total = total + (alpha as u32);
         } else {
-            total = (alpha - P) as u32;
+            total = (total + ((alpha - P) as u32)) as u32;
         }
     }
     total as usize
