@@ -14,11 +14,6 @@ pub fn get_hash_closure(length: usize, w: f32) -> Box<Fn(&Vec<f32>) -> f32> {
     let a = get_random_normal_vector(length);
     let b = rand::thread_rng().gen_range(0.0, w);
     let clos = move |v: &Vec<f32>| -> f32 {
-        /*let mut total = b;
-        for i in 1..v.len() {
-            total += v[i] * a[i];
-        }
-        (total) / w*/
         aview1(v).dot(&aview1(&a)) + b
     };
     Box::new(clos)
