@@ -3,22 +3,22 @@ use std::cmp::Ordering;
 use self::revord::RevOrd;
 use std::collections::BinaryHeap;
 
-fn bucket_distance(fi: f64, hi: f64, delta: i32, W: f64) -> f64 {
+fn bucket_distance(fi: f32, hi: f32, delta: i32, W: f32) -> f32 {
     if delta == -1 {
         W*(fi - hi)
     } else if delta == 1 {
         W - W*(fi - hi)
     } else {
-        0 as f64
+        0 as f32
     }
 }
-pub fn compute_pi_j(f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
-    let mut intermediate_vec: Vec<((usize,i32), f64)> = f_sig.iter()
+pub fn compute_pi_j(f_sig: &[f32], h_sig: &[u32], W: f32) -> Vec<(usize, i32)> {
+    let mut intermediate_vec: Vec<((usize,i32), f32)> = f_sig.iter()
         .zip(h_sig.iter())
         .enumerate()
         .flat_map(|(i, (fi, hi))| {
-            vec![((i, 1), bucket_distance(*fi, *hi, 1, W)),
-                 ((i, -1), bucket_distance(*fi, *hi, -1, W))].into_iter()
+            vec![((i, 1), bucket_distance(*fi, (*hi as f32), 1, W)),
+                 ((i, -1), bucket_distance(*fi, (*hi as f32), -1, W))].into_iter()
         }).collect();
     intermediate_vec.sort_by(|a, b| {
         if a.1 > b.1 {
@@ -36,16 +36,16 @@ pub fn compute_pi_j(f_sig: &[f64], h_sig: &[f64], W: f64) -> Vec<(usize, i32)> {
 fn sorted_delta_test() {
     let test_q = vec![1.0,2.0,3.0,4.0,5.0];
     let f_sig = vec![1.5,1.2,2.2];
-    let h_sig = vec![1.0,1.0,2.0];
+    let h_sig = vec![1,1,2];
     let W = 10.0;
     compute_pi_j(&f_sig, &h_sig, W);
 }
 
-fn score_set(perturbation_set: &[usize], square_zj_list: &[f64]) -> f64 {
+fn score_set(perturbation_set: &[usize], square_zj_list: &[f32]) -> f32 {
     perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
 }
 
-pub fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
+pub fn gen_perturbation_sets<'b>(zj_l: &'b[f32]) -> PerturbationIterator<'b> {
     let mut perturb_return: PerturbationIterator<'b> = PerturbationIterator {
         heap: BinaryHeap::new(),
         zj_list: zj_l
@@ -62,7 +62,7 @@ pub fn gen_perturbation_sets<'b>(zj_l: &'b[f64]) -> PerturbationIterator<'b> {
 
 pub struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
-    zj_list: &'a[f64]
+    zj_list: &'a[f32]
 }
 
 #[test]
@@ -101,7 +101,7 @@ impl<'a> Iterator for PerturbationIterator<'a> {
 #[derive(PartialEq, Debug)]
 pub struct PerturbationSet<'a> {
     pub data: Vec<usize>,
-    zj_list: &'a [f64],
+    zj_list: &'a [f32],
     max_m:  usize
 }
 impl<'a> Eq for PerturbationSet<'a> {}
@@ -180,17 +180,17 @@ impl<'a> PerturbationSet<'a> {
     }
 }
 
-fn expected_zj_squared(j: usize, M: usize, W: f64) -> f64 {
+fn expected_zj_squared(j: usize, M: usize, W: f32) -> f32 {
     if j <= M {
-        (((j * (j + 1)) as f64)
-            / ((4 * (M + 1) * (M + 2)) as f64)) * (W * W)
+        (((j * (j + 1)) as f32)
+            / ((4 * (M + 1) * (M + 2)) as f32)) * (W * W)
     } else {
-        (W*W) * (1.0 - ((2 * M + 1 - j) as f64) / ((M + 1) as f64) +
-                 (((2 * M + 1 - j) * (2 * M + 2 - j)) as f64) / ((4 * (M + 1) * (M + 2)) as f64))
+        (W*W) * (1.0 - ((2 * M + 1 - j) as f32) / ((M + 1) as f32) +
+                 (((2 * M + 1 - j) * (2 * M + 2 - j)) as f32) / ((4 * (M + 1) * (M + 2)) as f32))
     }
 }
 
-pub fn get_expected_zj_vals(M: usize, W: f64) -> Vec<f64> {
+pub fn get_expected_zj_vals(M: usize, W: f32) -> Vec<f32> {
     let mut zj_vals = Vec::new();
     for j in 0..M {
         zj_vals.push(expected_zj_squared(j, M, W));

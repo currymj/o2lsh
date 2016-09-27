@@ -7,7 +7,7 @@ pub struct LSHLookup<'a, T: 'a, Q: 'a+?Sized> {
     data: &'a [T]
 }
 
-impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f64 {
+impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f32 {
     pub fn add_table(&mut self, new_table: LSHTable<'a, T, Q>) {
         self.tables.push(new_table);
     }
@@ -53,7 +53,7 @@ use super::*;
             .collect();
         let mut mylookup = LSHLookup::new(&test_data);
         for _ in 1..10 {
-            let val = |_: &Vec<i32>| {0.0 as f64};
+            let val = |_: &Vec<i32>| {0.0 as f32};
             let funcs = vec![Box::new(val)];
             let new_single_table = LSHTable::new(&test_data, funcs, &ms);
             mylookup.add_table(new_single_table);
@@ -76,7 +76,7 @@ use super::*;
             .collect();
         let mut mylookup = LSHLookup::new(&test_data);
         for _ in 1..10 {
-            let val = |_: &Vec<i32>| {0.0 as f64};
+            let val = |_: &Vec<i32>| {0.0 as f32};
             let funcs = vec![Box::new(val)];
             let new_single_table = LSHTable::new(&test_data, funcs, &ms);
             mylookup.add_table(new_single_table);

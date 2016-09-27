@@ -4,11 +4,11 @@ use std::io::Error;
 use std::io::prelude::*;
 use std::path::Path;
 
-pub fn get_mnist_vector(fname: &str) -> Result<Vec<Vec<f64>>, Error> {
+pub fn get_mnist_vector(fname: &str) -> Result<Vec<Vec<f32>>, Error> {
     let path = Path::new(fname);
     match File::open(&path) {
         Ok(file) => {
-            let mut new_vec: Vec<Vec<f64>> = Vec::new();
+            let mut new_vec: Vec<Vec<f32>> = Vec::new();
             let reader = BufReader::new(file);
             for line in reader.lines() {
                 match line {
@@ -26,7 +26,7 @@ pub fn get_mnist_vector(fname: &str) -> Result<Vec<Vec<f64>>, Error> {
     }
 }
 
-pub fn mnist_test_to_vector(line: &str) -> Vec<f64> {
+pub fn mnist_test_to_vector(line: &str) -> Vec<f32> {
     line.trim().split(' ').map(|instr| instr.parse().unwrap()).collect()
 }
 
