@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use self::revord::RevOrd;
 use std::collections::BinaryHeap;
 
+
 fn bucket_distance(fi: f32, hi: f32, delta: i32, W: f32) -> f32 {
     if delta == -1 {
         W*(fi - hi)
@@ -12,6 +13,7 @@ fn bucket_distance(fi: f32, hi: f32, delta: i32, W: f32) -> f32 {
         0 as f32
     }
 }
+
 pub fn compute_pi_j(f_sig: &[f32], h_sig: &[u32], W: f32) -> Vec<(usize, i32)> {
     let mut intermediate_vec: Vec<((usize,i32), f32)> = f_sig.iter()
         .zip(h_sig.iter())
@@ -127,6 +129,7 @@ impl<'a> PartialOrd for PerturbationSet<'a> {
         self_score.partial_cmp(&other_score)
     }
 }
+
 impl<'a> PerturbationSet<'a> {
     pub fn len(&self) -> usize {
         self.data.len()

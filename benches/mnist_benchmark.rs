@@ -29,7 +29,7 @@ fn build_table_from_mnist_and_query(b: &mut Bencher) {
 
     let hash_boxes: Vec<_> = (1..num_hashes).map(|_| o2lsh::hashes::get_hash_closure(vec_length, 1.0)).collect();
 
-    let hash_table: o2lsh::table::LSHTable<Vec<f64>, Fn(&Vec<f64>) -> f64> = o2lsh::table::LSHTable::new_build(&mnist_data, hash_boxes, &ms);
+    let hash_table: o2lsh::table::LSHTable<Vec<f32>, Fn(&Vec<f32>) -> f32> = o2lsh::table::LSHTable::new_build(&mnist_data, hash_boxes, &ms);
 
     let run_test = || {
         for vec in mnist_q.iter() {
@@ -65,7 +65,7 @@ fn build_many_tables_from_mnist_and_time_query(b: &mut Bencher) {
     for _ in 1..10 {
         let hash_boxes: Vec<_> = (1..num_hashes).map(|_| o2lsh::hashes::get_hash_closure(vec_length, 1.0)).collect();
 
-        let hash_table: o2lsh::table::LSHTable<Vec<f64>, Fn(&Vec<f64>) -> f64> = o2lsh::table::LSHTable::new_build(&mnist_data, hash_boxes, &ms);
+        let hash_table: o2lsh::table::LSHTable<Vec<f32>, Fn(&Vec<f32>) -> f32> = o2lsh::table::LSHTable::new_build(&mnist_data, hash_boxes, &ms);
         all_tables.add_table(hash_table);
 
     }

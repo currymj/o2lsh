@@ -171,13 +171,12 @@ fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usi
 }
 
 const HIGH_ORDER: u64 = 0xFFFF0000;
-const LOW_ORDER: u64 = 0x0000FFFF;
 
 fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
     let mut total = 0 as u32;
     for (&i, &j) in signature.iter().zip(rand_ints) {
         let i_product = (i * j) as u64;
-        let alpha = (i_product & HIGH_ORDER) + 5 * (i_product & LOW_ORDER);
+        let alpha = (i_product & HIGH_ORDER) + 5 * (i_product >> 32);
         if alpha < P {
             total = total + (alpha as u32);
         } else {

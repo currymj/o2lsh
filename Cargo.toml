@@ -4,10 +4,14 @@ version = "0.1.0"
 authors = ["Michael J. Curry <currymj@fastmail.fm>"]
 license = "MPL-2.0+"
 
+
 [dependencies]
 rand = "0.3"
 revord = "0.0.2"
-ndarray = "0.6.5"
+byteorder = "0.5.3"
+
+[dependencies.ndarray]
+version = "0.6.5"
 
 [profile.release]
 debug = true
