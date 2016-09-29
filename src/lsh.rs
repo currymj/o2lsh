@@ -4,7 +4,6 @@ use std::collections::BTreeSet;
 
 pub struct LSHLookup<'a, T: 'a, Q: 'a+?Sized> {
     tables: Vec<LSHTable<'a, T, Q>>,
-    data: &'a [T]
 }
 
 impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f32 {
@@ -12,10 +11,9 @@ impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f32 {
         self.tables.push(new_table);
     }
 
-    pub fn new(data: &'a [T]) -> Self {
+    pub fn new()-> Self {
         LSHLookup {
-            tables: Vec::new(),
-            data: data
+            tables: Vec::new()
         }
     }
 
@@ -51,7 +49,7 @@ use super::*;
         let ms: Vec<Vec<usize>> = sets.into_iter()
             .map(|x| {x.data})
             .collect();
-        let mut mylookup = LSHLookup::new(&test_data);
+        let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
             let funcs = vec![Box::new(val)];
@@ -74,7 +72,7 @@ use super::*;
         let ms: Vec<Vec<usize>> = sets.into_iter()
             .map(|x| {x.data})
             .collect();
-        let mut mylookup = LSHLookup::new(&test_data);
+        let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
             let funcs = vec![Box::new(val)];
