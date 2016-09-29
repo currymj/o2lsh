@@ -30,7 +30,7 @@ pub fn mnist_test_to_vector(line: &str) -> Vec<f32> {
     line.trim().split(' ').map(|instr| instr.parse().unwrap()).collect()
 }
 
-mod xvecs {
+pub mod xvecs {
     extern crate byteorder;
     use std::fs::File;
     use std::path::Path;

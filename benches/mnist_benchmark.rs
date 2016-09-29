@@ -3,7 +3,6 @@ extern crate o2lsh;
 extern crate test;
 use test::Bencher;
 
-
 #[bench]
 fn build_table_from_mnist_and_query(b: &mut Bencher) {
 
@@ -39,6 +38,7 @@ fn build_table_from_mnist_and_query(b: &mut Bencher) {
 
     b.iter(run_test);
 }
+
 #[bench]
 fn build_many_tables_from_mnist_and_time_query(b: &mut Bencher) {
     let mnist_data = match o2lsh::util::get_mnist_vector("mnist1k.dts") {
