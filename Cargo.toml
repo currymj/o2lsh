@@ -2,7 +2,16 @@
 name = "o2lsh"
 version = "0.1.0"
 authors = ["Michael J. Curry <currymj@fastmail.fm>"]
-license = "GPL-3.0+"
+license = "MPL-2.0+"
+
 
 [dependencies]
 rand = "0.3"
+revord = "0.0.2"
+byteorder = "0.5.3"
+
+[dependencies.ndarray]
+version = "0.6.5"
+
+[profile.release]
+debug = true

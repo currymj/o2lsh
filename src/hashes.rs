@@ -1,22 +1,23 @@
 extern crate rand;
-// p-stable hash function
+extern crate ndarray;
+
 use self::rand::distributions::{Normal, IndependentSample};
 use self::rand::Rng;
-fn get_random_normal_vector(length: usize) -> Vec<f64> {
+use self::ndarray::prelude::*;
+
+/// Returns a random normal vector of size `length`
+fn get_random_normal_vector(length: usize) -> Vec<f32> {
     let normal = Normal::new(0.0,1.0);
-    let output_vector: Vec<f64> = vec![normal.ind_sample(&mut rand::thread_rng()); length];
+    let output_vector: Vec<f32> = vec![normal.ind_sample(&mut rand::thread_rng()) as f32; length];
     output_vector
 }
 
-pub fn get_hash_closure(length: usize, w: f64) -> Box<Fn(&Vec<f64>) -> f64> {
+/// Returns a boxed closure, which will dot its input of length `length` with a random normal vector, add a random constant, and scale by `w`.
+pub fn get_hash_closure(length: usize, w: f32) -> Box<Fn(&Vec<f32>) -> f32> {
     let a = get_random_normal_vector(length);
     let b = rand::thread_rng().gen_range(0.0, w);
-    let clos = move |v: &Vec<f64>| -> f64 {
-        let total: f64 = v.iter()
-            .zip(a.iter())
-            .map(|(x, y)| x * y)
-            .sum();
-        (total + b) / w
+    let clos = move |v: &Vec<f32>| -> f32 {
+        (aview1(v).dot(&aview1(&a)) + b) / w
     };
     Box::new(clos)
 }
