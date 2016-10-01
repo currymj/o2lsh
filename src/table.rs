@@ -22,7 +22,7 @@ impl Bucket {
 }
 
 #[derive(Clone, Default)]
-pub struct BucketChain {
+struct BucketChain {
     chain: Vec<Bucket>
 }
 
