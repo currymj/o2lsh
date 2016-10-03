@@ -2,12 +2,12 @@ use table::LSHTable;
 use std::collections::BTreeSet;
 // we want many lsh table
 
-pub struct LSHLookup<'a, T: 'a, Q: 'a+?Sized> {
-    tables: Vec<LSHTable<'a, T, Q>>,
+pub struct LSHLookup<'a, T: 'a, O: 'a> {
+    tables: Vec<LSHTable<'a, T, O>>,
 }
 
-impl<'a, T, Q: 'a+?Sized> LSHLookup<'a, T, Q> where Q: Fn(&'a T) -> f32 {
-    pub fn add_table(&mut self, new_table: LSHTable<'a, T, Q>) {
+impl<'a, T>  LSHLookup<'a, T, f32>  {
+    pub fn add_table(&mut self, new_table: LSHTable<'a, T, f32>) {
         self.tables.push(new_table);
     }
 
@@ -52,7 +52,7 @@ use super::*;
         let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
-            let funcs = vec![Box::new(val)];
+            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32>> = vec![Box::new(val)];
             let new_single_table = LSHTable::new(&test_data, funcs, &ms);
             mylookup.add_table(new_single_table);
         }
@@ -75,7 +75,7 @@ use super::*;
         let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
-            let funcs = vec![Box::new(val)];
+            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32>> = vec![Box::new(val)];
             let new_single_table = LSHTable::new(&test_data, funcs, &ms);
             mylookup.add_table(new_single_table);
         }

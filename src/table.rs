@@ -56,17 +56,17 @@ impl BucketChain {
 }
 
 const P: u64 = (0xFFFFFFFE as u64 - 4) as u64;
-pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
+pub struct LSHTable<'a, T: 'a, O: 'a> {
     buckets: Vec<BucketChain>,
     data: &'a [T],
-    hash_functions: Vec<Box<Q>>,
+    hash_functions: Vec<Box<Fn(&'a T) -> O>>,
     ri1: Vec<u32>,
     ri2: Vec<u32>,
     multiprobe_sequence: &'a [Vec<usize>]
 }
 
-impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
-    pub fn new(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
+impl<'a, T> LSHTable<'a, T, f32> {
+    pub fn new(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32>>, ms: &'a [Vec<usize>]) -> Self {
         let length_hash = hashes.len();
         LSHTable {
             buckets: vec![BucketChain::new(); data.len()],
@@ -88,7 +88,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
             (*x)(v) as u32
         }).collect()
     }
-    pub fn new_build(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
+    pub fn new_build(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32>>, ms: &'a [Vec<usize>]) -> Self {
         let mut x_to_build = LSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_quantized_signature(v);
@@ -201,7 +201,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         // get actual multiprobe sequence into ms instead
         let x = LSHTable::new(&test_data, funcs, &ms);
@@ -215,7 +215,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         let x = LSHTable::new_build(&test_data, funcs, &ms);
     }
@@ -229,7 +229,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
@@ -249,7 +249,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
