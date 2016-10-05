@@ -2,6 +2,7 @@ extern crate rand;
 extern crate num;
 use table::rand::Rng;
 use std::ops::{Index, IndexMut};
+use std::clone::Clone;
 use self::num::pow;
 const MASK: u32 = 0x000FFFFF;
 
@@ -102,10 +103,10 @@ impl<T> IndexMut<u32> for SmallPointerArray<T> {
     }
 }
 
-impl<T> SmallPointerArray<T> {
-    pub fn with_capacity(length: usize) -> Self {
+impl<T> SmallPointerArray<T> where T: Clone {
+    pub fn with_capacity(length: usize, default: T) -> Self {
         SmallPointerArray {
-            data: Vec::with_capacity(length)
+            data: vec![default; length]
         }
     }
     pub fn new() -> Self {
@@ -153,6 +154,9 @@ struct PackedLSHTable<'a, T: 'a, Q: 'a+?Sized> {
 fn fill_array(buckets: &mut SmallPointerArray<u32>, chain: &BucketChain, start_ind: u32) -> u32 {
     let mut ind = start_ind;
     let num_buckets = chain.chain.len();
+    if chain.chain.len() == 0 {
+        return start_ind;
+    }
     for i in 0..num_buckets-1 {
         buckets[ind] = chain.chain[i].hash_sig;
         ind += 1;
@@ -200,11 +204,11 @@ impl<'a, T, Q: 'a+?Sized> PackedLSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
         // get total number of points, and total number of buckets
         // (slow, requiring iteration over whole list)
         let num_points = inner_table.data.len();
-        let num_buckets = inner_table.buckets.iter().map(|x| {x.len()}).sum();
+        let num_buckets: usize = inner_table.buckets.iter().map(|x| {x.len()}).sum();
 
-        let mut bucket_array = SmallPointerArray::with_capacity(num_points + num_buckets);
+        let mut bucket_array = SmallPointerArray::with_capacity(num_points + num_buckets, 0 as u32);
 
-        let mut hash_table = Vec::with_capacity(num_buckets);
+        let mut hash_table = vec![0; inner_table.buckets.len()];
         let mut current_write_ind = 0;
 
         let data_slice = MaskedSmallPointerSlice::new(inner_table.data);
@@ -436,6 +440,7 @@ mod tests {
     use super::LSHTable;
     use super::SmallPointerArray;
     use super::MaskedSmallPointerSlice;
+    use super::PackedLSHTable;
     use multi;
 
     // fn to gen multiprobe sequence
@@ -468,6 +473,19 @@ mod tests {
         let x = LSHTable::new_build(&test_data, funcs, &ms);
     }
 
+    #[test]
+    fn test_packed_new_build() {
+        let test_data = vec![
+            vec![1.0,2.0,3.0,4.0,5.0],
+            vec![0.0,0.0,0.0,0.0,0.0],
+            vec![1.0,2.0,3.0,4.0,5.0]
+        ];
+
+        let val = |q: &Vec<f32>| {0.0 as f32};
+        let funcs = vec![Box::new(val)];
+        let ms = vec![vec![1,2,3]];
+        let x = PackedLSHTable::new_build(&test_data, funcs, &ms);
+    }
     #[test]
     fn test_query() {
         let test_data = vec![
