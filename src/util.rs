@@ -14,15 +14,15 @@ pub fn get_mnist_vector(fname: &str) -> Result<Vec<Vec<f32>>, Error> {
                 match line {
                     Ok(s) => {
                         new_vec.push(mnist_test_to_vector(&s));
-                    },
+                    }
                     Err(reason) => {
                         return Err(reason);
                     }
                 };
             }
             Ok(new_vec)
-        },
-        Err(reason) => Err(reason)
+        }
+        Err(reason) => Err(reason),
     }
 }
 
@@ -78,7 +78,7 @@ mod tests {
         let fname: &str = "./mnist1k.dts";
         match get_mnist_vector(fname) {
             Ok(v) => println!("{:?}", v),
-            Err(reason) => panic!("couldn't open because {}", reason)
+            Err(reason) => panic!("couldn't open because {}", reason),
         }
     }
 
