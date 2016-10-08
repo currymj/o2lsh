@@ -12,14 +12,14 @@ use multi;
 #[derive(Clone)]
 pub struct Bucket {
     pointers: Vec<usize>,
-    hash_sig: u32
+    hash_sig: u32,
 }
 
 impl Bucket {
     pub fn new(hash_sig: u32) -> Self {
         Bucket {
             pointers: Vec::new(),
-            hash_sig: hash_sig
+            hash_sig: hash_sig,
         }
 
     }
@@ -30,14 +30,12 @@ impl Bucket {
 
 #[derive(Clone, Default)]
 struct BucketChain {
-    chain: Vec<Bucket>
+    chain: Vec<Bucket>,
 }
 
 impl BucketChain {
     pub fn new() -> Self {
-        BucketChain{
-            chain: Vec::new()
-        }
+        BucketChain { chain: Vec::new() }
     }
     pub fn get(&self, _index: u32) -> Option<&Bucket> {
         for bucket_ref in &self.chain {
@@ -69,24 +67,24 @@ impl BucketChain {
 const P: u64 = (0xFFFFFFFE as u64 - 4) as u64;
 
 pub struct MaskedSmallPointerSlice<'a, T: 'a> {
-    data: &'a [T]
+    data: &'a [T],
 }
 
 impl<'a, T> Index<u32> for MaskedSmallPointerSlice<'a, T> {
     type Output = T;
     fn index(&self, _index: u32) -> &T {
-        &(self.data[(_index & MASK)  as usize])
+        &(self.data[(_index & MASK) as usize])
     }
 }
 
-/*impl<'a, T> IndexMut<u32> for MaskedSmallPointerSlice<'a, T> {
-    fn index_mut(&mut self, _index: u32) -> &mut T {
-        &mut (self.data[(_index & MASK) as usize])
-    }
-}*/
+// impl<'a, T> IndexMut<u32> for MaskedSmallPointerSlice<'a, T> {
+// fn index_mut(&mut self, _index: u32) -> &mut T {
+// &mut (self.data[(_index & MASK) as usize])
+// }
+// }
 
 pub struct SmallPointerArray<T> {
-    data: Vec<T>
+    data: Vec<T>,
 }
 
 
@@ -103,16 +101,14 @@ impl<T> IndexMut<u32> for SmallPointerArray<T> {
     }
 }
 
-impl<T> SmallPointerArray<T> where T: Clone {
+impl<T> SmallPointerArray<T>
+    where T: Clone
+{
     pub fn with_capacity(length: usize, default: T) -> Self {
-        SmallPointerArray {
-            data: vec![default; length]
-        }
+        SmallPointerArray { data: vec![default; length] }
     }
     pub fn new() -> Self {
-        SmallPointerArray {
-            data: Vec::new()
-        }
+        SmallPointerArray { data: Vec::new() }
     }
 
     pub fn push(&mut self, x: T) {
@@ -122,33 +118,31 @@ impl<T> SmallPointerArray<T> where T: Clone {
 
 impl<'a, T: 'a> MaskedSmallPointerSlice<'a, T> {
     pub fn new(d: &'a [T]) -> Self {
-        MaskedSmallPointerSlice {
-            data: d
-        }
+        MaskedSmallPointerSlice { data: d }
     }
 
-    /*pub fn push(&mut self, x: T) {
-        self.data.push(x);
-    }*/
+    // pub fn push(&mut self, x: T) {
+    // self.data.push(x);
+    // }
 }
 
-pub struct LSHTable<'a, T: 'a, Q: 'a+?Sized>  {
+pub struct LSHTable<'a, T: 'a, Q: 'a + ?Sized> {
     buckets: Vec<BucketChain>,
     data: &'a [T],
     hash_functions: Vec<Box<Q>>,
     ri1: Vec<u32>,
     ri2: Vec<u32>,
-    multiprobe_sequence: &'a [Vec<usize>]
+    multiprobe_sequence: &'a [Vec<usize>],
 }
 
-struct PackedLSHTable<'a, T: 'a, Q: 'a+?Sized> {
+struct PackedLSHTable<'a, T: 'a, Q: 'a + ?Sized> {
     data_refs_and_buckets: SmallPointerArray<u32>,
     bucket_table: Vec<u32>,
     data: MaskedSmallPointerSlice<'a, T>,
     hash_functions: Vec<Box<Q>>,
     ri1: Vec<u32>,
     ri2: Vec<u32>,
-    multiprobe_sequence: &'a [Vec<usize>]
+    multiprobe_sequence: &'a [Vec<usize>],
 }
 
 fn fill_array(buckets: &mut SmallPointerArray<u32>, chain: &BucketChain, start_ind: u32) -> u32 {
@@ -157,11 +151,11 @@ fn fill_array(buckets: &mut SmallPointerArray<u32>, chain: &BucketChain, start_i
     if chain.chain.len() == 0 {
         return start_ind;
     }
-    for i in 0..num_buckets-1 {
+    for i in 0..num_buckets - 1 {
         buckets[ind] = chain.chain[i].hash_sig;
         ind += 1;
         let current_bucket_len = chain.chain[i].pointers.len();
-        if current_bucket_len > (pow(2,11) - 1) {
+        if current_bucket_len > (pow(2, 11) - 1) {
             // handle long case
             unimplemented!();
         } else {
@@ -173,7 +167,7 @@ fn fill_array(buckets: &mut SmallPointerArray<u32>, chain: &BucketChain, start_i
             buckets[ind] = ((current_bucket_len as u32) << 20) | (curr_pointer as u32);
             for j in 1..current_bucket_len {
                 let curr_pointer = chain.chain[i].pointers[j] as u32;
-                assert!(curr_pointer < pow(2,20));
+                assert!(curr_pointer < pow(2, 20));
                 buckets[ind] = curr_pointer;
                 ind += 1;
             }
@@ -183,28 +177,28 @@ fn fill_array(buckets: &mut SmallPointerArray<u32>, chain: &BucketChain, start_i
     // set highest bit to 1
 
 
-    let curr_pointer = chain.chain[num_buckets-1].pointers[0];
+    let curr_pointer = chain.chain[num_buckets - 1].pointers[0];
     let current_bucket_len = chain.chain[num_buckets - 1].pointers.len();
     buckets[ind] = 0x80000000 | (curr_pointer as u32);
     ind += 1;
 
     for j in 1..current_bucket_len {
-        let curr_pointer = chain.chain[num_buckets-1].pointers[j];
-        assert!(curr_pointer < pow(2,20));
+        let curr_pointer = chain.chain[num_buckets - 1].pointers[j];
+        assert!(curr_pointer < pow(2, 20));
         buckets[ind] = curr_pointer as u32;
         ind += 1;
     }
     ind
 }
-impl<'a, T, Q: 'a+?Sized> PackedLSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
-
-
+impl<'a, T, Q: 'a + ?Sized> PackedLSHTable<'a, T, Q>
+    where Q: Fn(&'a T) -> f32
+{
     pub fn new_from_table(inner_table: LSHTable<'a, T, Q>) -> Self {
         // unimplemented!();
         // get total number of points, and total number of buckets
         // (slow, requiring iteration over whole list)
         let num_points = inner_table.data.len();
-        let num_buckets: usize = inner_table.buckets.iter().map(|x| {x.len()}).sum();
+        let num_buckets: usize = inner_table.buckets.iter().map(|x| x.len()).sum();
 
         let mut bucket_array = SmallPointerArray::with_capacity(num_points + num_buckets, 0 as u32);
 
@@ -227,7 +221,7 @@ impl<'a, T, Q: 'a+?Sized> PackedLSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
             hash_functions: inner_table.hash_functions,
             ri1: inner_table.ri1,
             ri2: inner_table.ri2,
-            multiprobe_sequence: inner_table.multiprobe_sequence
+            multiprobe_sequence: inner_table.multiprobe_sequence,
         }
 
     }
@@ -237,28 +231,30 @@ impl<'a, T, Q: 'a+?Sized> PackedLSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
     }
 
     fn get_signature(&self, v: &'a T) -> Vec<f32> {
-        self.hash_functions.iter().map(|x| {
-            (*x)(v)
-        }).collect()
+        self.hash_functions
+            .iter()
+            .map(|x| (*x)(v))
+            .collect()
     }
 
     fn get_quantized_signature(&self, v: &'a T) -> Vec<u32> {
-        self.hash_functions.iter().map(|x| {
-            (*x)(v) as u32
-        }).collect()
+        self.hash_functions
+            .iter()
+            .map(|x| (*x)(v) as u32)
+            .collect()
     }
-    /*pub fn query_vec(&self, v: &'a T) -> Vec<usize> {
-        let sig = self.get_quantized_signature(v);
-        let sig_ind = hash_func_t1(&sig, &self.ri1, self.buckets.len());
-        let chain_ind = hash_func_t2(&sig, &self.ri2);
-        // replace this part
-        match self.buckets[sig_ind].get(chain_ind) {
-           Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                *bucket_ind
-           }).collect(),
-            None => Vec::new()
-        }
-    }*/
+    // pub fn query_vec(&self, v: &'a T) -> Vec<usize> {
+    // let sig = self.get_quantized_signature(v);
+    // let sig_ind = hash_func_t1(&sig, &self.ri1, self.buckets.len());
+    // let chain_ind = hash_func_t2(&sig, &self.ri2);
+    // replace this part
+    // match self.buckets[sig_ind].get(chain_ind) {
+    // Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+    // bucket_ind
+    // }).collect(),
+    // None => Vec::new()
+    // }
+    // }
 
     fn get_all_sigs(&self, sig: &[f32], multiprobe_limit: usize) -> Vec<Vec<u32>> {
         let qsig = self.quantize_signature(sig);
@@ -280,31 +276,32 @@ impl<'a, T, Q: 'a+?Sized> PackedLSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
     }
 
     fn quantize_signature(&self, sig: &[f32]) -> Vec<u32> {
-        sig.iter().map(|&x| {x as u32}).collect()
+        sig.iter().map(|&x| x as u32).collect()
     }
 
-    /*pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
-        let sig = self.get_signature(v);
-        let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);
-        let mut output_vec = Vec::new();
-        for s in &all_sigs {
-            // replace this part
-            let sig_ind = hash_func_t1(s, &self.ri1, self.buckets.len());
-            let chain_ind = hash_func_t2(s, &self.ri2);
-            output_vec.append(
-                &mut match self.buckets[sig_ind].get(chain_ind) {
-                    Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                        *bucket_ind
-                    }).collect(),
-                    None => Vec::new()
-                });
-        }
-        output_vec
-    }*/
+    // pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
+    // let sig = self.get_signature(v);
+    // let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);
+    // let mut output_vec = Vec::new();
+    // for s in &all_sigs {
+    // replace this part
+    // let sig_ind = hash_func_t1(s, &self.ri1, self.buckets.len());
+    // let chain_ind = hash_func_t2(s, &self.ri2);
+    // output_vec.append(
+    // &mut match self.buckets[sig_ind].get(chain_ind) {
+    // Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+    // bucket_ind
+    // }).collect(),
+    // None => Vec::new()
+    // });
+    // }
+    // output_vec
+    // }
 }
 
-impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
-
+impl<'a, T, Q: 'a + ?Sized> LSHTable<'a, T, Q>
+    where Q: Fn(&'a T) -> f32
+{
     pub fn new(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
         let length_hash = hashes.len();
         LSHTable {
@@ -313,20 +310,22 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
             hash_functions: hashes,
             ri1: rand::thread_rng().gen_iter().take(length_hash).collect(),
             ri2: rand::thread_rng().gen_iter().take(length_hash).collect(),
-            multiprobe_sequence: ms
+            multiprobe_sequence: ms,
         }
     }
 
     fn get_signature(&self, v: &'a T) -> Vec<f32> {
-        self.hash_functions.iter().map(|x| {
-            (*x)(v)
-        }).collect()
+        self.hash_functions
+            .iter()
+            .map(|x| (*x)(v))
+            .collect()
     }
 
     fn get_quantized_signature(&self, v: &'a T) -> Vec<u32> {
-        self.hash_functions.iter().map(|x| {
-            (*x)(v) as u32
-        }).collect()
+        self.hash_functions
+            .iter()
+            .map(|x| (*x)(v) as u32)
+            .collect()
     }
 
     pub fn new_build(data: &'a [T], hashes: Vec<Box<Q>>, ms: &'a [Vec<usize>]) -> Self {
@@ -341,7 +340,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
                 let bucket_opt = bucket_chain.get_mut(chain_ind);
                 match bucket_opt {
                     Some(bucket_ref) => bucket_ref.push(i),
-                    None => bad = true
+                    None => bad = true,
                 };
             }
             if bad {
@@ -356,10 +355,13 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
         let sig_ind = hash_func_t1(&sig, &self.ri1, self.buckets.len());
         let chain_ind = hash_func_t2(&sig, &self.ri2);
         match self.buckets[sig_ind].get(chain_ind) {
-           Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                *bucket_ind
-           }).collect(),
-            None => Vec::new()
+            Some(bucket) => {
+                bucket.pointers
+                    .iter()
+                    .map(|bucket_ind| *bucket_ind)
+                    .collect()
+            }
+            None => Vec::new(),
         }
     }
 
@@ -383,7 +385,7 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
     }
 
     fn quantize_signature(&self, sig: &[f32]) -> Vec<u32> {
-        sig.iter().map(|&x| {x as u32}).collect()
+        sig.iter().map(|&x| x as u32).collect()
     }
 
     pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
@@ -393,27 +395,29 @@ impl<'a, T, Q: 'a+?Sized> LSHTable<'a, T, Q> where Q: Fn(&'a T) -> f32 {
         for s in &all_sigs {
             let sig_ind = hash_func_t1(s, &self.ri1, self.buckets.len());
             let chain_ind = hash_func_t2(s, &self.ri2);
-            output_vec.append(
-                &mut match self.buckets[sig_ind].get(chain_ind) {
-                    Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                        *bucket_ind
-                    }).collect(),
-                    None => Vec::new()
-                });
+            output_vec.append(&mut match self.buckets[sig_ind].get(chain_ind) {
+                Some(bucket) => {
+                    bucket.pointers
+                        .iter()
+                        .map(|bucket_ind| *bucket_ind)
+                        .collect()
+                }
+                None => Vec::new(),
+            });
         }
         output_vec
     }
 }
 
 
-fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usize{
+fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usize {
     let total = hash_func_t2(signature, rand_ints);
     (total as usize) % num_buckets
 }
 
 fn hash_func_inner(signature: &[f64], rand_ints: &[f64], primes: f64) -> u32 {
     let mut counter: f64 = 0.0;
-    for element in signature.iter().zip(rand_ints).map(|(a, b)| {(a * b)}) {
+    for element in signature.iter().zip(rand_ints).map(|(a, b)| (a * b)) {
         counter = ((counter + element)) % primes;
     }
     counter as u32
@@ -447,61 +451,53 @@ mod tests {
     #[test]
     fn test_init() {
 
-        let test_data = vec![
-            vec![1.0,2.0,3.0,4.0,5.0],
-            vec![0.0,0.0,0.0,0.0,0.0],
-            vec![1.0,2.0,3.0,4.0,5.0]
-        ];
+        let test_data = vec![vec![1.0, 2.0, 3.0, 4.0, 5.0],
+                             vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                             vec![1.0, 2.0, 3.0, 4.0, 5.0]];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |q: &Vec<f32>| 0.0 as f32;
         let funcs = vec![Box::new(val)];
-        let ms = vec![vec![1,2,3]];
+        let ms = vec![vec![1, 2, 3]];
         // get actual multiprobe sequence into ms instead
         let x = LSHTable::new(&test_data, funcs, &ms);
     }
     #[test]
     fn test_new_build() {
-        let test_data = vec![
-            vec![1.0,2.0,3.0,4.0,5.0],
-            vec![0.0,0.0,0.0,0.0,0.0],
-            vec![1.0,2.0,3.0,4.0,5.0]
-        ];
+        let test_data = vec![vec![1.0, 2.0, 3.0, 4.0, 5.0],
+                             vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                             vec![1.0, 2.0, 3.0, 4.0, 5.0]];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |q: &Vec<f32>| 0.0 as f32;
         let funcs = vec![Box::new(val)];
-        let ms = vec![vec![1,2,3]];
+        let ms = vec![vec![1, 2, 3]];
         let x = LSHTable::new_build(&test_data, funcs, &ms);
     }
 
     #[test]
     fn test_packed_new_build() {
-        let test_data = vec![
-            vec![1.0,2.0,3.0,4.0,5.0],
-            vec![0.0,0.0,0.0,0.0,0.0],
-            vec![1.0,2.0,3.0,4.0,5.0]
-        ];
+        let test_data = vec![vec![1.0, 2.0, 3.0, 4.0, 5.0],
+                             vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                             vec![1.0, 2.0, 3.0, 4.0, 5.0]];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |q: &Vec<f32>| 0.0 as f32;
         let funcs = vec![Box::new(val)];
-        let ms = vec![vec![1,2,3]];
+        let ms = vec![vec![1, 2, 3]];
         let x = PackedLSHTable::new_build(&test_data, funcs, &ms);
     }
     #[test]
     fn test_query() {
-        let test_data = vec![
-            vec![1.0,2.0,3.0,4.0,5.0],
-            vec![0.0,0.0,0.0,0.0,0.0],
-            vec![1.0,2.0,3.0,4.0,5.0]
-        ];
+        let test_data = vec![vec![1.0, 2.0, 3.0, 4.0, 5.0],
+                             vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                             vec![1.0, 2.0, 3.0, 4.0, 5.0]];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |q: &Vec<f32>| 0.0 as f32;
         let funcs = vec![Box::new(val)];
-        let zjs = multi::get_expected_zj_vals(1,1.0);
+        let zjs = multi::get_expected_zj_vals(1, 1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
             .collect();
         let ms: Vec<Vec<usize>> = sets.into_iter()
-            .map(|x| {x.data})
+            .map(|x| x.data)
             .collect();
         let x = LSHTable::new_build(&test_data, funcs, &ms);
         x.query_vec(&test_data[0]);
@@ -517,37 +513,35 @@ mod tests {
         println!("test!");
         for i in 0u32..9 {
             println!("{}", test_arr[i]);
-        };
+        }
     }
     #[test]
     fn test_masked_array() {
         let mut test_vec = Vec::new();
-            for i in 1..10 {
-                test_vec.push(i);
-            }
+        for i in 1..10 {
+            test_vec.push(i);
+        }
         let test_arr: MaskedSmallPointerSlice<i32> = MaskedSmallPointerSlice::new(&test_vec);
         println!("{}", test_arr.data.len());
         println!("test!");
         for i in 0xFFF00000u32..0xFFF00009 {
             println!("{}", test_arr[i]);
-        };
+        }
     }
     #[test]
     fn test_query_multiprobe() {
-        let test_data = vec![
-            vec![1.0,2.0,3.0,4.0,5.0],
-            vec![0.0,0.0,0.0,0.0,0.0],
-            vec![1.0,2.0,3.0,4.0,5.0]
-        ];
+        let test_data = vec![vec![1.0, 2.0, 3.0, 4.0, 5.0],
+                             vec![0.0, 0.0, 0.0, 0.0, 0.0],
+                             vec![1.0, 2.0, 3.0, 4.0, 5.0]];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |q: &Vec<f32>| 0.0 as f32;
         let funcs = vec![Box::new(val)];
-        let zjs = multi::get_expected_zj_vals(1,1.0);
+        let zjs = multi::get_expected_zj_vals(1, 1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
             .collect();
         let ms: Vec<Vec<usize>> = sets.into_iter()
-            .map(|x| {x.data})
+            .map(|x| x.data)
             .collect();
         let x = LSHTable::new_build(&test_data, funcs, &ms);
         x.query_multiprobe(&test_data[0], 3);

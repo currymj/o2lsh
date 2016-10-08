@@ -6,22 +6,24 @@ use std::collections::BinaryHeap;
 
 fn bucket_distance(fi: f32, hi: f32, delta: i32, W: f32) -> f32 {
     if delta == -1 {
-        W*(fi - hi)
+        W * (fi - hi)
     } else if delta == 1 {
-        W - W*(fi - hi)
+        W - W * (fi - hi)
     } else {
         0 as f32
     }
 }
 
 pub fn compute_pi_j(f_sig: &[f32], h_sig: &[u32], W: f32) -> Vec<(usize, i32)> {
-    let mut intermediate_vec: Vec<((usize,i32), f32)> = f_sig.iter()
+    let mut intermediate_vec: Vec<((usize, i32), f32)> = f_sig.iter()
         .zip(h_sig.iter())
         .enumerate()
         .flat_map(|(i, (fi, hi))| {
             vec![((i, 1), bucket_distance(*fi, (*hi as f32), 1, W)),
-                 ((i, -1), bucket_distance(*fi, (*hi as f32), -1, W))].into_iter()
-        }).collect();
+                 ((i, -1), bucket_distance(*fi, (*hi as f32), -1, W))]
+                .into_iter()
+        })
+        .collect();
     intermediate_vec.sort_by(|a, b| {
         if a.1 > b.1 {
             Ordering::Greater
@@ -31,32 +33,32 @@ pub fn compute_pi_j(f_sig: &[f32], h_sig: &[u32], W: f32) -> Vec<(usize, i32)> {
             Ordering::Equal
         }
     });
-    intermediate_vec.iter().map(|a| {a.0}).collect()
+    intermediate_vec.iter().map(|a| a.0).collect()
 }
 
 #[test]
 fn sorted_delta_test() {
-    let test_q = vec![1.0,2.0,3.0,4.0,5.0];
-    let f_sig = vec![1.5,1.2,2.2];
-    let h_sig = vec![1,1,2];
+    let test_q = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let f_sig = vec![1.5, 1.2, 2.2];
+    let h_sig = vec![1, 1, 2];
     let W = 10.0;
     compute_pi_j(&f_sig, &h_sig, W);
 }
 
 fn score_set(perturbation_set: &[usize], square_zj_list: &[f32]) -> f32 {
-    perturbation_set.iter().map(|ind| {square_zj_list[*ind]}).sum()
+    perturbation_set.iter().map(|ind| square_zj_list[*ind]).sum()
 }
 
-pub fn gen_perturbation_sets<'b>(zj_l: &'b[f32]) -> PerturbationIterator<'b> {
+pub fn gen_perturbation_sets<'b>(zj_l: &'b [f32]) -> PerturbationIterator<'b> {
     let mut perturb_return: PerturbationIterator<'b> = PerturbationIterator {
         heap: BinaryHeap::new(),
-        zj_list: zj_l
+        zj_list: zj_l,
     };
     let zero_vec = vec![0];
     let a0: PerturbationSet<'b> = PerturbationSet {
         data: zero_vec,
         zj_list: zj_l,
-        max_m: perturb_return.zj_list.len() / 2
+        max_m: perturb_return.zj_list.len() / 2,
     };
     perturb_return.heap.push(RevOrd(a0));
     perturb_return
@@ -64,12 +66,12 @@ pub fn gen_perturbation_sets<'b>(zj_l: &'b[f32]) -> PerturbationIterator<'b> {
 
 pub struct PerturbationIterator<'a> {
     heap: BinaryHeap<RevOrd<PerturbationSet<'a>>>,
-    zj_list: &'a[f32]
+    zj_list: &'a [f32],
 }
 
 #[test]
 fn test_perturbation_iterator() {
-    let zjl = vec![1.0,2.0,3.0,4.0];
+    let zjl = vec![1.0, 2.0, 3.0, 4.0];
     let ii = gen_perturbation_sets(&zjl);
     let z: Vec<_> = ii.take(3).collect();
 }
@@ -92,8 +94,8 @@ impl<'a> Iterator for PerturbationIterator<'a> {
                     if a_i.valid() {
                         return Some(a_i);
                     }
-                },
-                None => return None
+                }
+                None => return None,
             };
         }
     }
@@ -104,7 +106,7 @@ impl<'a> Iterator for PerturbationIterator<'a> {
 pub struct PerturbationSet<'a> {
     pub data: Vec<usize>,
     zj_list: &'a [f32],
-    max_m:  usize
+    max_m: usize,
 }
 impl<'a> Eq for PerturbationSet<'a> {}
 
@@ -144,7 +146,7 @@ impl<'a> PerturbationSet<'a> {
         for &x in &self.data {
             let y = x;
             if y == *max_val {
-                new_data.push(y+1);
+                new_data.push(y + 1);
             } else {
                 new_data.push(y);
             }
@@ -152,7 +154,7 @@ impl<'a> PerturbationSet<'a> {
         PerturbationSet {
             data: new_data,
             zj_list: newlist,
-            max_m: self.max_m
+            max_m: self.max_m,
         }
     }
     pub fn valid(&self) -> bool {
@@ -162,7 +164,7 @@ impl<'a> PerturbationSet<'a> {
         }
         for &val in &self.data {
             let other_should_be_missing = 2 * self.max_m + 1 - val;
-            if let Some(_) = self.data.iter().position(|&y| { y == other_should_be_missing}) {
+            if let Some(_) = self.data.iter().position(|&y| y == other_should_be_missing) {
                 return false;
             }
         }
@@ -178,18 +180,18 @@ impl<'a> PerturbationSet<'a> {
         PerturbationSet {
             data: new_data,
             zj_list: self.zj_list,
-            max_m: self.max_m
+            max_m: self.max_m,
         }
     }
 }
 
 fn expected_zj_squared(j: usize, M: usize, W: f32) -> f32 {
     if j <= M {
-        (((j * (j + 1)) as f32)
-            / ((4 * (M + 1) * (M + 2)) as f32)) * (W * W)
+        (((j * (j + 1)) as f32) / ((4 * (M + 1) * (M + 2)) as f32)) * (W * W)
     } else {
-        (W*W) * (1.0 - ((2 * M + 1 - j) as f32) / ((M + 1) as f32) +
-                 (((2 * M + 1 - j) * (2 * M + 2 - j)) as f32) / ((4 * (M + 1) * (M + 2)) as f32))
+        (W * W) *
+        (1.0 - ((2 * M + 1 - j) as f32) / ((M + 1) as f32) +
+         (((2 * M + 1 - j) * (2 * M + 2 - j)) as f32) / ((4 * (M + 1) * (M + 2)) as f32))
     }
 }
 
@@ -203,7 +205,7 @@ pub fn get_expected_zj_vals(M: usize, W: f32) -> Vec<f32> {
 
 #[test]
 fn test_expected_zj_squared() {
-    expected_zj_squared(1,10,1.0);
+    expected_zj_squared(1, 10, 1.0);
 }
 
 #[test]

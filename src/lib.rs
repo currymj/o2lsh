@@ -5,5 +5,4 @@ pub mod multi;
 pub mod lsh;
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
