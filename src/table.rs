@@ -1,6 +1,7 @@
 extern crate rand;
 use table::rand::Rng;
 use multi;
+use super::lshtable::LSHTable;
 
 
 #[derive(Clone)]
@@ -56,19 +57,49 @@ impl BucketChain {
 }
 
 const P: u64 = (0xFFFFFFFE as u64 - 4) as u64;
-pub struct LSHTable<'a, T: 'a, O: 'a> {
+pub struct StandardLSHTable<'a, T: 'a, O: 'a> {
     buckets: Vec<BucketChain>,
     data: &'a [T],
-    hash_functions: Vec<Box<Fn(&'a T) -> O>>,
+    hash_functions: Vec<Box<Fn(&'a T) -> O + Sync + Send>>,
     ri1: Vec<u32>,
     ri2: Vec<u32>,
     multiprobe_sequence: &'a [Vec<usize>]
 }
 
-impl<'a, T> LSHTable<'a, T, f32> {
-    pub fn new(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32>>, ms: &'a [Vec<usize>]) -> Self {
+impl<'a, T: Sync + Send> LSHTable<'a, T, f32> for StandardLSHTable<'a, T, f32> {
+    fn query_vec(&self, v: &'a T) -> Vec<usize> {
+        let sig = self.get_quantized_signature(v);
+        let sig_ind = hash_func_t1(&sig, &self.ri1, self.buckets.len());
+        let chain_ind = hash_func_t2(&sig, &self.ri2);
+        match self.buckets[sig_ind].get(chain_ind) {
+            Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+                *bucket_ind
+            }).collect(),
+            None => Vec::new()
+        }
+    }
+    fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
+        let sig = self.get_signature(v);
+        let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);
+        let mut output_vec = Vec::new();
+        for s in &all_sigs {
+            let sig_ind = hash_func_t1(s, &self.ri1, self.buckets.len());
+            let chain_ind = hash_func_t2(s, &self.ri2);
+            output_vec.append(
+                &mut match self.buckets[sig_ind].get(chain_ind) {
+                    Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
+                        *bucket_ind
+                    }).collect(),
+                    None => Vec::new()
+                });
+        }
+        output_vec
+    }
+}
+impl<'a, T> StandardLSHTable<'a, T, f32> {
+    pub fn new(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
         let length_hash = hashes.len();
-        LSHTable {
+        StandardLSHTable {
             buckets: vec![BucketChain::new(); data.len()],
             data: data,
             hash_functions: hashes,
@@ -88,8 +119,8 @@ impl<'a, T> LSHTable<'a, T, f32> {
             (*x)(v) as u32
         }).collect()
     }
-    pub fn new_build(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32>>, ms: &'a [Vec<usize>]) -> Self {
-        let mut x_to_build = LSHTable::new(data, hashes, ms);
+    pub fn new_build(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
+        let mut x_to_build = StandardLSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
             let hash_sig = x_to_build.get_quantized_signature(v);
             let bucket_ind = hash_func_t1(&hash_sig, &x_to_build.ri1, x_to_build.buckets.len());
@@ -110,17 +141,6 @@ impl<'a, T> LSHTable<'a, T, f32> {
         x_to_build
     }
 
-    pub fn query_vec(&self, v: &'a T) -> Vec<usize> {
-        let sig = self.get_quantized_signature(v);
-        let sig_ind = hash_func_t1(&sig, &self.ri1, self.buckets.len());
-        let chain_ind = hash_func_t2(&sig, &self.ri2);
-        match self.buckets[sig_ind].get(chain_ind) {
-           Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                *bucket_ind
-           }).collect(),
-            None => Vec::new()
-        }
-    }
 
     fn get_all_sigs(&self, sig: &[f32], multiprobe_limit: usize) -> Vec<Vec<u32>> {
         let qsig = self.quantize_signature(sig);
@@ -145,23 +165,6 @@ impl<'a, T> LSHTable<'a, T, f32> {
         sig.iter().map(|&x| {x as u32}).collect()
     }
 
-    pub fn query_multiprobe(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
-        let sig = self.get_signature(v);
-        let all_sigs = self.get_all_sigs(&sig, multiprobe_limit);
-        let mut output_vec = Vec::new();
-        for s in &all_sigs {
-            let sig_ind = hash_func_t1(s, &self.ri1, self.buckets.len());
-            let chain_ind = hash_func_t2(s, &self.ri2);
-            output_vec.append(
-                &mut match self.buckets[sig_ind].get(chain_ind) {
-                    Some(bucket) => bucket.pointers.iter().map(|bucket_ind| {
-                        *bucket_ind
-                    }).collect(),
-                    None => Vec::new()
-                });
-        }
-        output_vec
-    }
 }
 
 
@@ -187,7 +190,9 @@ fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
 }
 #[cfg(test)]
 mod tests {
-    use super::LSHTable;
+    use super::StandardLSHTable;
+    use super::super::hashes;
+    use super::super::lshtable::LSHTable;
     use multi;
 
     // fn to gen multiprobe sequence
@@ -201,10 +206,10 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         // get actual multiprobe sequence into ms instead
-        let x = LSHTable::new(&test_data, funcs, &ms);
+        let x = StandardLSHTable::new(&test_data, funcs, &ms);
     }
     #[test]
     fn test_new_build() {
@@ -215,9 +220,9 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
-        let x = LSHTable::new_build(&test_data, funcs, &ms);
+        let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
     }
 
     #[test]
@@ -229,7 +234,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
@@ -237,8 +242,35 @@ mod tests {
         let ms: Vec<Vec<usize>> = sets.into_iter()
             .map(|x| {x.data})
             .collect();
-        let x = LSHTable::new_build(&test_data, funcs, &ms);
+        let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
         x.query_vec(&test_data[0]);
+    }
+    fn is_send<T: Send>() {}
+    #[test]
+    fn test_is_send() {
+        is_send::<StandardLSHTable<Vec<f32>, f32>>();
+    }
+    /*#[test]
+    fn test_with_real_funcs() {
+        use super::super::hashes::get_hash_closure;
+        let num_hashes = 5;
+        let vec_length = 5;
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = (1..num_hashes).map(|_| hashes::get_hash_closure(vec_length, 1.0)).collect();
+        let test_data = vec![
+            vec![1.0,2.0,3.0,4.0,5.0],
+            vec![0.0,0.0,0.0,0.0,0.0],
+            vec![1.0,2.0,3.0,4.0,5.0]
+        ];
+        let zjs = multi::get_expected_zj_vals(1,1.0);
+        let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
+            .take(5)
+            .collect();
+        let ms: Vec<Vec<usize>> = sets.into_iter()
+            .map(|x| {x.data})
+            .collect();
+        let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
+
+        x.query_multiprobe(&test_data[0], 3);
     }
     #[test]
     fn test_query_multiprobe() {
@@ -249,7 +281,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32>> = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
@@ -257,7 +289,8 @@ mod tests {
         let ms: Vec<Vec<usize>> = sets.into_iter()
             .map(|x| {x.data})
             .collect();
-        let x = LSHTable::new_build(&test_data, funcs, &ms);
+        let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
         x.query_multiprobe(&test_data[0], 3);
-    }
+    }*/
 }
+

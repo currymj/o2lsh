@@ -1,18 +1,25 @@
-use table::LSHTable;
+extern crate rayon;
 use std::collections::BTreeSet;
-// we want many lsh table
+use self::rayon::prelude::*;
+use super::lshtable::LSHTable;
 
-pub struct LSHLookup<'a, T: 'a, O: 'a> {
-    tables: Vec<LSHTable<'a, T, O>>,
+use std::marker::PhantomData;
+
+pub struct LSHLookup<'a, T: 'a, O:, L: LSHTable<'a, T, O>> {
+    _m1: PhantomData<&'a T>,
+    _m2: PhantomData<O>,
+    tables: Vec<L>
 }
 
-impl<'a, T>  LSHLookup<'a, T, f32>  {
-    pub fn add_table(&mut self, new_table: LSHTable<'a, T, f32>) {
+impl<'a, T: Sync, L: LSHTable<'a, T, f32>>  LSHLookup<'a, T, f32, L>  {
+    pub fn add_table(&mut self, new_table: L) {
         self.tables.push(new_table);
     }
 
     pub fn new()-> Self {
         LSHLookup {
+            _m1: Default::default(),
+            _m2: Default::default(),
             tables: Vec::new()
         }
     }
@@ -29,12 +36,33 @@ impl<'a, T>  LSHLookup<'a, T, f32>  {
         result.extend(output_set.into_iter());
         result
     }
+
+    pub fn pquery_vec(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
+        let all_result_sets = self.tables.par_iter()
+            .map(|table| {
+                let mut output_set = BTreeSet::new();
+                for &reference in &table.query_multiprobe(v, multiprobe_limit) {
+                    output_set.insert(reference);
+                }
+                output_set
+            })
+            .reduce(|| {BTreeSet::new()}, |mut set1, set2| {
+                set1.extend(set2);
+                set1
+            });
+
+
+        let mut result = Vec::new();
+        result.extend(all_result_sets.into_iter());
+        result
+    }
+
 }
 #[cfg(test)]
 mod tests {
 use super::*;
-    use table::LSHTable;
     use multi;
+    use super::super::table::StandardLSHTable;
     #[test]
     fn test_init_tables() {
         let test_data = vec![
@@ -52,11 +80,12 @@ use super::*;
         let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
-            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32>> = vec![Box::new(val)];
-            let new_single_table = LSHTable::new(&test_data, funcs, &ms);
+            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
+            let new_single_table = StandardLSHTable::new(&test_data, funcs, &ms);
             mylookup.add_table(new_single_table);
         }
     }
+    fn is_send<T: Send>(x: &T) {}
 
     #[test]
     fn test_query_tables() {
@@ -75,8 +104,9 @@ use super::*;
         let mut mylookup = LSHLookup::new();
         for _ in 1..10 {
             let val = |_: &Vec<i32>| {0.0 as f32};
-            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32>> = vec![Box::new(val)];
-            let new_single_table = LSHTable::new(&test_data, funcs, &ms);
+            let funcs: Vec<Box<Fn(&Vec<i32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
+            let new_single_table = StandardLSHTable::new(&test_data, funcs, &ms);
+            is_send(&new_single_table);
             mylookup.add_table(new_single_table);
         }
 
@@ -85,3 +115,4 @@ use super::*;
         }
     }
 }
+
