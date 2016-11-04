@@ -27,6 +27,7 @@ struct BucketChain {
     chain: Vec<Bucket>
 }
 
+
 impl BucketChain {
     pub fn new() -> Self {
         BucketChain{
@@ -96,15 +97,20 @@ impl<'a, T: Sync + Send> LSHTable<'a, T, f32> for StandardLSHTable<'a, T, f32> {
         output_vec
     }
 }
+use self::rand::distributions::{Sample, Range};
 impl<'a, T> StandardLSHTable<'a, T, f32> {
     pub fn new(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
         let length_hash = hashes.len();
+        let mut range = Range::new(1,2^29);
+        let mut rng = rand::thread_rng();
         StandardLSHTable {
             buckets: vec![BucketChain::new(); data.len()],
             data: data,
             hash_functions: hashes,
-            ri1: rand::thread_rng().gen_iter().take(length_hash).collect(),
-            ri2: rand::thread_rng().gen_iter().take(length_hash).collect(),
+            ri1: vec![range.sample(&mut rng); length_hash],
+            ri2: vec![range.sample(&mut rng); length_hash],
+            //ri1: rand::thread_rng().gen_iter().take(length_hash).collect(),
+            //ri2: rand::thread_rng().gen_iter().take(length_hash).collect(),
             multiprobe_sequence: ms
         }
     }
@@ -116,7 +122,7 @@ impl<'a, T> StandardLSHTable<'a, T, f32> {
 
     fn get_quantized_signature(&self, v: &'a T) -> Vec<u32> {
         self.hash_functions.iter().map(|x| {
-            (*x)(v) as u32
+            (*x)(v).floor().abs() as u32
         }).collect()
     }
     pub fn new_build(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
@@ -162,7 +168,7 @@ impl<'a, T> StandardLSHTable<'a, T, f32> {
     }
 
     fn quantize_signature(&self, sig: &[f32]) -> Vec<u32> {
-        sig.iter().map(|&x| {x as u32}).collect()
+        sig.iter().map(|&x| {x.floor().abs() as u32}).collect()
     }
 
 }
@@ -173,13 +179,14 @@ fn hash_func_t1(signature: &[u32], rand_ints: &[u32], num_buckets: usize) -> usi
     total % num_buckets
 }
 
-const HIGH_ORDER: u64 = 0xFFFF0000;
+const LOW_ORDER: u64 = 0x0000FFFF;
+
 
 fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
     let mut total = 0 as u32;
     for (&i, &j) in signature.iter().zip(rand_ints) {
-        let i_product = (i * j) as u64;
-        let alpha = (i_product & HIGH_ORDER) + 5 * (i_product >> 32);
+        let i_product = (i as u64) * (j as u64);
+        let alpha = (i_product & LOW_ORDER) + 5 * (i_product >> 32);
         if alpha < P {
             total = total + (alpha as u32);
         } else {
@@ -245,17 +252,13 @@ mod tests {
         let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
         x.query_vec(&test_data[0]);
     }
-    fn is_send<T: Send>() {}
+
     #[test]
-    fn test_is_send() {
-        is_send::<StandardLSHTable<Vec<f32>, f32>>();
-    }
-    /*#[test]
     fn test_with_real_funcs() {
         use super::super::hashes::get_hash_closure;
         let num_hashes = 5;
         let vec_length = 5;
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = (1..num_hashes).map(|_| hashes::get_hash_closure(vec_length, 1.0)).collect();
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = (1..num_hashes).map(|_| hashes::get_hash_closure(vec_length, 10.0)).collect();
         let test_data = vec![
             vec![1.0,2.0,3.0,4.0,5.0],
             vec![0.0,0.0,0.0,0.0,0.0],
@@ -281,7 +284,7 @@ mod tests {
         ];
 
         let val = |q: &Vec<f32>| {0.0 as f32};
-        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send>> = vec![Box::new(val)];
+        let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
             .take(5)
@@ -291,6 +294,6 @@ mod tests {
             .collect();
         let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
         x.query_multiprobe(&test_data[0], 3);
-    }*/
+    }
 }
 
