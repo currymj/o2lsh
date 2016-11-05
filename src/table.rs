@@ -195,6 +195,7 @@ fn hash_func_t2(signature: &[u32], rand_ints: &[u32]) -> usize {
     }
     total as usize
 }
+
 #[cfg(test)]
 mod tests {
     use super::StandardLSHTable;
