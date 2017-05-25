@@ -5,6 +5,7 @@ use super::lshtable::LSHTable;
 
 use std::marker::PhantomData;
 
+/// Represents a collection of many redundant LSH tables.
 pub struct LSHLookup<'a, T: 'a, O:, L: LSHTable<'a, T, O>> {
     _m1: PhantomData<&'a T>,
     _m2: PhantomData<O>,
@@ -12,6 +13,8 @@ pub struct LSHLookup<'a, T: 'a, O:, L: LSHTable<'a, T, O>> {
 }
 
 impl<'a, T: Sync, L: LSHTable<'a, T, f32>>  LSHLookup<'a, T, f32, L>  {
+
+    /// Add a new table to the collection.
     pub fn add_table(&mut self, new_table: L) {
         self.tables.push(new_table);
     }
@@ -25,6 +28,7 @@ impl<'a, T: Sync, L: LSHTable<'a, T, f32>>  LSHLookup<'a, T, f32, L>  {
     }
 
 
+    /// Query all tables, returning deduplicated elements.
     pub fn query_vec(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let mut output_set = BTreeSet::new();
         for table in &self.tables {
@@ -37,6 +41,7 @@ impl<'a, T: Sync, L: LSHTable<'a, T, f32>>  LSHLookup<'a, T, f32, L>  {
         result
     }
 
+    /// Query in parallel using Rayon.
     pub fn pquery_vec(&self, v: &'a T, multiprobe_limit: usize) -> Vec<usize> {
         let all_result_sets = self.tables.par_iter()
             .map(|table| {

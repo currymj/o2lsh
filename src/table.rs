@@ -4,6 +4,7 @@ use multi;
 use super::lshtable::LSHTable;
 
 
+/// A bucket of pointers to data elements, associated with a particular hash signature.
 #[derive(Clone)]
 pub struct Bucket {
     pointers: Vec<usize>,
@@ -17,6 +18,7 @@ impl Bucket {
             hash_sig: hash_sig
         }
     }
+
     pub fn push(&mut self, value: usize) {
         self.pointers.push(value);
     }
@@ -99,6 +101,7 @@ impl<'a, T: Sync + Send> LSHTable<'a, T, f32> for StandardLSHTable<'a, T, f32> {
 }
 use self::rand::distributions::{Sample, Range};
 impl<'a, T> StandardLSHTable<'a, T, f32> {
+    /// Constructs (but doesn't compute pointers of) a new LSH table from the given data, with given hash functions and sequence of multiprobes to make.
     pub fn new(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
         let length_hash = hashes.len();
         let mut range = Range::new(1,2^29);
@@ -109,8 +112,6 @@ impl<'a, T> StandardLSHTable<'a, T, f32> {
             hash_functions: hashes,
             ri1: vec![range.sample(&mut rng); length_hash],
             ri2: vec![range.sample(&mut rng); length_hash],
-            //ri1: rand::thread_rng().gen_iter().take(length_hash).collect(),
-            //ri2: rand::thread_rng().gen_iter().take(length_hash).collect(),
             multiprobe_sequence: ms
         }
     }
@@ -125,6 +126,8 @@ impl<'a, T> StandardLSHTable<'a, T, f32> {
             (*x)(v).floor().abs() as u32
         }).collect()
     }
+
+    /// Constructs and indexes a new LSH table.
     pub fn new_build(data: &'a [T], hashes: Vec<Box<Fn(&'a T) -> f32 + Sync + Send>>, ms: &'a [Vec<usize>]) -> Self {
         let mut x_to_build = StandardLSHTable::new(data, hashes, ms);
         for (i, v) in x_to_build.data.iter().enumerate() {
