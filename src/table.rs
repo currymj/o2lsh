@@ -1,5 +1,4 @@
 extern crate rand;
-use table::rand::Rng;
 use multi;
 use super::lshtable::LSHTable;
 
@@ -216,7 +215,7 @@ mod tests {
             vec![1.0,2.0,3.0,4.0,5.0]
         ];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |_: &Vec<f32>| {0.0 as f32};
         let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         // get actual multiprobe sequence into ms instead
@@ -230,7 +229,7 @@ mod tests {
             vec![1.0,2.0,3.0,4.0,5.0]
         ];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |_: &Vec<f32>| {0.0 as f32};
         let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let ms = vec![vec![1,2,3]];
         let x = StandardLSHTable::new_build(&test_data, funcs, &ms);
@@ -244,7 +243,7 @@ mod tests {
             vec![1.0,2.0,3.0,4.0,5.0]
         ];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |_: &Vec<f32>| {0.0 as f32};
         let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)
@@ -259,7 +258,6 @@ mod tests {
 
     #[test]
     fn test_with_real_funcs() {
-        use super::super::hashes::get_hash_closure;
         let num_hashes = 5;
         let vec_length = 5;
         let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = (1..num_hashes).map(|_| hashes::get_hash_closure(vec_length, 10.0)).collect();
@@ -287,7 +285,7 @@ mod tests {
             vec![1.0,2.0,3.0,4.0,5.0]
         ];
 
-        let val = |q: &Vec<f32>| {0.0 as f32};
+        let val = |_: &Vec<f32>| {0.0 as f32};
         let funcs: Vec<Box<Fn(&Vec<f32>) -> f32 + Send + Sync>> = vec![Box::new(val)];
         let zjs = multi::get_expected_zj_vals(1,1.0);
         let sets: Vec<multi::PerturbationSet> = multi::gen_perturbation_sets(&zjs)

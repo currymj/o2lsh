@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 extern crate revord;
 use std::cmp::Ordering;
 use self::revord::RevOrd;
@@ -38,7 +39,6 @@ pub fn compute_pi_j(f_sig: &[f32], h_sig: &[u32], W: f32) -> Vec<(usize, i32)> {
 
 #[test]
 fn sorted_delta_test() {
-    let test_q = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let f_sig = vec![1.5, 1.2, 2.2];
     let h_sig = vec![1, 1, 2];
     let W = 10.0;

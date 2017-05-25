@@ -90,7 +90,7 @@ use super::*;
             mylookup.add_table(new_single_table);
         }
     }
-    fn is_send<T: Send>(x: &T) {}
+    fn is_send<T: Send>(_: &T) {}
 
     #[test]
     fn test_query_tables() {
