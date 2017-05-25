@@ -3,6 +3,8 @@ name = "o2lsh"
 version = "0.1.0"
 authors = ["Michael J. Curry <currymj@fastmail.fm>"]
 license = "MPL-2.0+"
+description = "A simple library for locality-sensitive hashing."
+repository = "https://github.com/currymj/o2lsh"
 
 
 [dependencies]
