@@ -8,11 +8,11 @@ license = "MPL-2.0+"
 [dependencies]
 rand = "0.3"
 revord = "0.0.2"
-byteorder = "0.5.3"
-rayon = "0.5"
+byteorder = "1.0"
+rayon = "0.7"
 
 [dependencies.ndarray]
-version = "0.6.5"
+version = "0.9.1"
 
 [profile.release]
 debug = true

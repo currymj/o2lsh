@@ -8,10 +8,9 @@ The code is currently licensed under MPL 2.0.
 
 This code remains a work in progress. If you were hoping to use locality sensitive hashing right now in another Rust package, this probably won't get you there at the moment.
 
-Goals:
-[x] multiprobe
-[x] rayon parallelism
-[ ] validate correctness/efficiency of Euclidean LSH implementation
-[ ] refactor for ergonomics
-[ ] implement other hash functions
-[ ] make general enough to implement some really weird hash functions
+Roadmap:
+
+- simplification of data structures/types
+- provision of a C and Python interface
+- integration with [the ANN benchmark](https://github.com/erikbern/ann-benchmarks)
+- optimizations and performance improvements
