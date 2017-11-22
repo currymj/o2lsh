@@ -1,11 +1,14 @@
 [package]
 name = "o2lsh-py"
 version = "0.1.0"
-authors = ["Michael J. Curry <currymj@fastmail.fm>"]
-
-[lib]
-name = "o2lshpy"
-crate-type = ["dylib"]
+authors = ["Michael J. Curry <curry@cs.umd.edu>"]
 
 [dependencies]
-o2lsh = { path = ".." }
+pyo3 = "0.2"
+
+[dependencies.o2lsh]
+path = ".."
+
+[lib]
+name = "o2lsh"
+crate-type = ["cdylib"]
